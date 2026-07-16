@@ -15,5 +15,5 @@ export const verifyCacSchema = z.object({
   rcNumber: z.string().trim().min(1),
 });
 
-export type verifyNinInput = z.infer<typeof verifyNinSchema>;
-export type verifyCacInput = z.infer<typeof verifyCacSchema>;
+export type VerifyNinInput = z.infer<typeof verifyNinSchema>;
+export type VerifyCacInput = z.infer<typeof verifyCacSchema>;

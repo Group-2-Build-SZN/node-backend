@@ -17,8 +17,8 @@ export const verificationTypeEnum = pgEnum("verification_type", ["nin", "cac"]);
 
 export const verificationStatusEnum = pgEnum("verification_status", [
   "unverified",
-  "pending",
-  "review_needed",
+  "pending", // Keeps track during the active API call
+  "review_needed", // Use if the Dojah API encounters network/service downtime
   "verified",
   "rejected",
 ]);
@@ -44,7 +44,7 @@ export const verifications = pgTable("verifications", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   type: verificationTypeEnum("type").notNull(),
-  idNumber: text("id_number").notNull(),
+  idNumber: text("id_number").notNull(), // Stores NIN number or CAC RC Number
   status: verificationStatusEnum("status").notNull().default("unverified"),
   providerReference: text("provider_reference"),
   verifiedAt: timestamp("verified_at"),
@@ -54,3 +54,4 @@ export const verifications = pgTable("verifications", {
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Verification = typeof verifications.$inferSelect;
+export type NewVerification = typeof verifications.$inferInsert;

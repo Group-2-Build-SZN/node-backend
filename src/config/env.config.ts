@@ -20,15 +20,14 @@ const envSchema = z.object({
 
   PAYSTACK_SECRET_KEY: z.string().min(1),
 
-  METAMAP_CLIENT_ID: z.string().min(1),
-  METAMAP_CLIENT_SECRET: z.string().min(1),
-  METAMAP_WEBHOOK_SECRET: z.string().min(1),
-  METAMAP_WEBHOOK_URL: z.string().url("Must be a valid URL string"),
+  DOJAH_APP_ID: z.string().min(1, "DOJAH App ID is required"),
+  DOJAH_SECRET_KEY: z.string().min(1, "DOJAH SECRET KEY is required"),
+  DOJAH_BASE_URL: z.string().url().default("https://sandbox.dojah.io"),
 
-  //EMAIL_HOST: z.string().min(1, "EMAIL_HOST is required"),
+  EMAIL_HOST: z.string().min(1, "EMAIL_HOST is required"),
   EMAIL_PORT: z.coerce.number(),
-  //EMAIL_USER: z.string().min(1, "EMAIL_USER is required"),
-  //EMAIL_PASS: z.string().min(1, "EMAIL_PASS is required"),
+  EMAIL_USER: z.string().min(1, "EMAIL_USER is required"),
+  EMAIL_PASS: z.string().min(1, "EMAIL_PASS is required"),
 
   OTP_EXPIRY_MINUTES: z.coerce.number().default(10),
   OTP_CODE_LENGTH: z.coerce.number().default(6),

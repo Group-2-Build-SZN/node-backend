@@ -18,6 +18,6 @@ router.post(
   validateSchema(verifyCacSchema, "body"),
   KycController.verifyCac,
 );
-router.post("/webhook", KycController.handleWebhook);
 router.get("/status", authenticate, KycController.getStatus);
+
 export default router;
