@@ -1,25 +1,83 @@
 // temporary
 import type { NextFunction, Request, Response } from "express";
 import { UserRole } from "@/constants/user-role";
-import { TEST_USER_ID } from "@/constants/seed";
+// import { TEST_USER_ID } from "@/constants/seed";
+import jwt from "jsonwebtoken";
+import { env } from "@/config/env.config";
+import { db } from "@/config/database.config";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { StatusCodes } from "http-status-codes";
 
-export const authenticate = (
+export const authenticate = async (
   req: Request,
-  _res: Response,
+  res: Response,
   next: NextFunction,
 ) => {
-  req.user = {
-    id: TEST_USER_ID,
-    email: "test@example.com",
-    role: UserRole.AGENT,
-  };
-  next();
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(StatusCodes.UNAUTHORIZED).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    const payload = jwt.verify(token, env.JWT_SECRET) as {
+      userId: string;
+      email: string;
+      role: UserRole | null;
+    };
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, payload.userId))
+      .limit(1);
+
+    if (!user) {
+      return res.status(StatusCodes.UNAUTHORIZED).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (user.isBlacklisted) {
+      return res.status(StatusCodes.FORBIDDEN).json({
+        success: false,
+        message: "Your account has been blacklisted.",
+      });
+    }
+
+    req.user = {
+      id: user.id,
+      email: user.email,
+      role: user.role as UserRole | null,
+    };
+
+    next();
+  } catch {
+    return res.status(StatusCodes.UNAUTHORIZED).json({
+      success: false,
+      message: "Invalid token.",
+    });
+  }
 };
 
 export const authorize = (...roles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user || !roles.includes(req.user.role)) {
-      return res.status(403).json({ success: false, message: "Forbidden" });
+    if (
+      !req.user ||
+      req.user.role === null ||
+      !roles.includes(req.user.role)
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden",
+      });
     }
     next();
   };

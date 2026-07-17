@@ -1,9 +1,20 @@
 import argon2 from "argon2";
 import { env } from "@/config/env.config";
 import { db } from "@/config/database.config";
-import { loginCodes } from "@/db/schema";
+import { loginCodes, users } from "@/db/schema";
 import { addMinutes } from "date-fns";
 import emailService from "@/services/email.service";
+import { eq, and, desc, gt } from "drizzle-orm";
+import AppError from "@/errors/AppError";
+import { ErrorCode } from "@/constants/error-code";
+import { StatusCodes } from "http-status-codes";
+import { refreshTokens } from "@/db/schema";
+import { addDays } from "date-fns";
+import {
+    generateAccessToken,
+    generateRefreshToken,
+} from "@/utils/jwt";
+
 
 class AuthService {
     async requestCode(email: string) {
@@ -30,6 +41,90 @@ class AuthService {
             message: "Login code sent successfully.",
         };
     }
+
+    async verifyCode(email: string, code: string) {
+        const [loginCode] = await db
+            .select()
+            .from(loginCodes)
+            .where(
+                and(
+                    eq(loginCodes.email, email),
+                    eq(loginCodes.consumed, false),
+                    gt(loginCodes.expiresAt, new Date()),
+                ),
+            )
+            .orderBy(desc(loginCodes.createdAt))
+            .limit(1);
+        
+        if (!loginCode) {
+            throw AppError(
+                "Invalid or expired login code.",
+                StatusCodes.BAD_REQUEST,
+                ErrorCode.INVALID_INPUT,
+            );
+        }
+
+        const isValid = await argon2.verify(loginCode.codeHash, code);
+
+        if (!isValid) {
+            throw AppError(
+                "Invalid login code.",
+                StatusCodes.BAD_REQUEST,
+                ErrorCode.INVALID_INPUT,
+            );
+        }
+
+        await db
+            .update(loginCodes)
+            .set({
+                consumed: true,
+            })
+            .where(eq(loginCodes.id, loginCode.id));
+        
+        let [user] = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, email))
+            .limit(1);
+        
+        if (!user) {
+            [user] = await db
+                .insert(users)
+                .values({
+                    email,
+                    role: null,
+                })
+                .returning();
+        }
+
+        const payload = {
+            userId: user.id,
+            email: user.email,
+            role: user.role,
+        };
+
+        const accessToken = generateAccessToken(payload);
+
+        const refreshToken = generateRefreshToken(payload);
+
+        const refreshTokenHash = await argon2.hash(refreshToken);
+
+        const refreshExpiresAt = addDays(new Date(), 7);
+
+        await db.insert(refreshTokens).values({
+            userId: user.id,
+            tokenHash: refreshTokenHash,
+            expiresAt: refreshExpiresAt,
+        });
+
+        return {
+            accessToken,
+            refreshToken,
+            user,
+        };
+    }
 }
+
+
 
 export default new AuthService();

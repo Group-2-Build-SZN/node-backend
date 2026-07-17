@@ -19,6 +19,7 @@ const envSchema = z.object({
   CLOUDINARY_API_SECRET: z.string().min(1),
 
   PAYSTACK_SECRET_KEY: z.string().min(1),
+  PAYSTACK_PLAN_CODE: z.string().min(1), 
 
   DOJAH_APP_ID: z.string().min(1, "DOJAH App ID is required"),
   DOJAH_SECRET_KEY: z.string().min(1, "DOJAH SECRET KEY is required"),

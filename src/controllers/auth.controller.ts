@@ -6,11 +6,22 @@ class AuthController {
     static async requestCode(req: Request, res: Response) {
         const { email } = req.body;
 
-        await authService.requestCode(email);
+        const result = await authService.requestCode(email);
 
         return res.status(StatusCodes.OK).json({
             success: true,
-            message: "Login code sent successfully.",
+            ...result,
+        });
+    }
+
+    static async verifyCode(req: Request, res: Response) {
+        const { email, code } = req.body;
+
+        const result = await authService.verifyCode(email, code);
+
+        return res.status(StatusCodes.OK).json({
+            success: true,
+            ...result,
         });
     }
 }
