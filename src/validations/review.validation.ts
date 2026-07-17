@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 export const createReviewSchema = z.object({
   waterRating: z.coerce.number().int().min(1).max(5),
@@ -11,10 +11,10 @@ export const createReviewSchema = z.object({
   submittedLng: z.coerce.number().min(-180).max(180),
 });
 
-export const getReviewsQuerySchenma = z.object({
+export const getReviewsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(50).optional().default(20),
 });
 
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
-export type GetReviewsQuery = z.infer<typeof getReviewsQuerySchenma>;
+export type GetReviewsQuery = z.infer<typeof getReviewsQuerySchema>;

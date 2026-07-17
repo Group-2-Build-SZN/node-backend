@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 export const createSavedFilterSchema = z.object({
   name: z.string().trim().min(1).max(50),

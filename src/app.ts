@@ -1,3 +1,4 @@
+import { setupSwagger } from "@/config/swagger.config";
 import { corsMiddleware } from "@/middlewares/credentials.middleware";
 import router from "@/routes";
 import errorHandler from "@/middlewares/error-handler.middleware";
@@ -18,6 +19,7 @@ export function createApp() {
 
   app.use(corsMiddleware);
   app.use(express.urlencoded({ extended: true }));
+  setupSwagger(app);
 
   app.get("/health", (_req, res) => {
     res.status(StatusCodes.OK).json({ status: "ok" });
