@@ -1,15 +1,24 @@
 import { Router } from "express";
 import kycRoutes from "@/routes/kyc.routes";
 import propertyRoutes from "@/routes/property.routes";
+import savedPropertyRoutes from "@/routes/saved-property.routes";
+import inquiryRoutes from "@/routes/inquiry.routes";
 import reviewRoutes from "@/routes/review.routes";
 import amenityRoutes from "@/routes/amenity.routes";
 import paymentRoutes from "@/routes/payment.routes";
+import referralRoutes from "@/routes/referral.routes";
+import savedFilterRoutes from "@/routes/saved-filter.routes";
+import userRoutes from "@/routes/user.routes";
 const router = Router();
 
 router.use("/kyc", kycRoutes);
+router.use("/saved", savedPropertyRoutes);
+router.use("/inquiries", inquiryRoutes);
 router.use("/properties/:propertyId/reviews", reviewRoutes);
 router.use("/properties", propertyRoutes);
 router.use("/amenities", amenityRoutes);
 router.use("/payments", paymentRoutes);
-
+router.use("/referrals", referralRoutes);
+router.use("/saved-filters", savedFilterRoutes);
+router.use("/users", userRoutes);
 export default router;

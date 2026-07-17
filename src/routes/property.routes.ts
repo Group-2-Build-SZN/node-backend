@@ -1,16 +1,26 @@
 import PropertyController from "@/controllers/property.controller";
-import PropertyFlagController from "@/controllers/property-flag.controller";
+import SavedPropertyController from "@/controllers/saved-property.controller";
+import PropertyReportController from "@/controllers/property-report.controller";
+import InquiryController from "@/controllers/inquiry.controller";
+import {
+  propertyMediaUpload,
+  reportEvidenceUpload,
+} from "@/middlewares/upload.middleware";
+import { validateSchema } from "@/middlewares/validation.middleware";
+import { submitInquirySchema } from "@/validations/inquiry.validation";
+import { submitReportSchema } from "@/validations/property-report.validation";
 import {
   authenticate,
   authorize,
 } from "@/middlewares/authentication.middleware";
-import { validateSchema } from "@/middlewares/validation.middleware";
+
 import { UserRole } from "@/constants/user-role";
 import {
   createPropertySchema,
   updatePropertySchema,
   getPropertiesQuerySchema,
 } from "@/validations/property.validation";
+
 import { Router } from "express";
 
 const router = Router();
@@ -21,7 +31,21 @@ router.get(
   validateSchema(getPropertiesQuerySchema, "query"),
   PropertyController.getProperties,
 );
+router.get("/recommended", PropertyController.getRecommendedProperties);
 router.get("/:id", PropertyController.getPropertyById);
+router.post("/:id/save", authenticate, SavedPropertyController.saveProperty);
+router.post(
+  "/:id/inquiries",
+  authenticate,
+  validateSchema(submitInquirySchema, "body"),
+  InquiryController.submitInquiry,
+);
+
+router.delete(
+  "/:id/save",
+  authenticate,
+  SavedPropertyController.unsaveProperty,
+);
 
 // agent/landlord only
 router.post(
@@ -54,7 +78,20 @@ router.delete(
   PropertyController.deleteProperty,
 );
 
-router.post("/:id/flag", authenticate, PropertyFlagController.flagProperty);
-router.delete("/:id/flag", authenticate, PropertyFlagController.unflagProperty);
+router.post(
+  "/:id/media",
+  authenticate,
+  authorize(UserRole.AGENT, UserRole.LANDLORD),
+  propertyMediaUpload,
+  PropertyController.addMedia,
+);
+
+router.post(
+  "/:id/report",
+  authenticate,
+  reportEvidenceUpload,
+  validateSchema(submitReportSchema, "body"),
+  PropertyReportController.submitReport,
+);
 
 export default router;

@@ -10,5 +10,12 @@ router.post(
   PaymentController.initializeSubscription,
 );
 router.post("/webhook", PaymentController.handleWebhook);
+router.get(
+  "/subscription",
+  authenticate,
+  PaymentController.getSubscriptionStatus,
+);
+router.post("/cancel", authenticate, PaymentController.cancelSubscription);
+router.get("/history", authenticate, PaymentController.getHistory);
 
 export default router;
