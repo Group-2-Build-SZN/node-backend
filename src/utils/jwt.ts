@@ -1,10 +1,11 @@
 import jwt from "jsonwebtoken";
 import { env } from "@/config/env.config";
+import { UserRole } from "@/constants/user-role";
 
 export interface JwtPayload {
     userId: string;
     email: string;
-    role: string | null;
+    role: UserRole | null;
 }
 
 const ACCESS_TOKEN_EXPIRES_IN = "15m";

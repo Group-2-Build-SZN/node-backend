@@ -19,3 +19,4 @@ export const completeProfileSchema = z.object({
 export type RequestCodeInput = z.infer<typeof requestCodeSchema>;
 export type VerifyCodeInput = z.infer<typeof verifyCodeSchema>;
 export type CompleteProfileInput = z.infer<typeof completeProfileSchema>;
+export const refreshTokenSchema = z.object({});

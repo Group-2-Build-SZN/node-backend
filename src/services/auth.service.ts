@@ -1,19 +1,15 @@
 import argon2 from "argon2";
 import { env } from "@/config/env.config";
 import { db } from "@/config/database.config";
-import { loginCodes, users } from "@/db/schema";
-import { addMinutes } from "date-fns";
+import { addMinutes, addDays } from "date-fns";
 import emailService from "@/services/email.service";
 import { eq, and, desc, gt } from "drizzle-orm";
 import AppError from "@/errors/AppError";
 import { ErrorCode } from "@/constants/error-code";
 import { StatusCodes } from "http-status-codes";
-import { refreshTokens } from "@/db/schema";
-import { addDays } from "date-fns";
-import {
-    generateAccessToken,
-    generateRefreshToken,
-} from "@/utils/jwt";
+import { UserRole } from "@/constants/user-role";
+import { loginCodes, users, refreshTokens } from "@/db/schema";
+import { generateAccessToken, generateRefreshToken } from "@/utils/jwt";
 
 
 class AuthService {
@@ -100,7 +96,7 @@ class AuthService {
         const payload = {
             userId: user.id,
             email: user.email,
-            role: user.role,
+            role: user.role as UserRole | null,
         };
 
         const accessToken = generateAccessToken(payload);
@@ -123,6 +119,10 @@ class AuthService {
             user,
         };
     }
+
+    // async refresh(_refreshToken: string) {
+
+    // }
 }
 
 

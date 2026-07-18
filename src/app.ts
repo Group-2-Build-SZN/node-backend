@@ -3,6 +3,7 @@ import errorHandler from "@/middlewares/error-handler.middleware";
 import AppError from "@/errors/AppError";
 import express from "express";
 import { StatusCodes } from "http-status-codes";
+import cookieParser from "cookie-parser";
 
 export function createApp() {
   const app = express();
@@ -15,6 +16,8 @@ export function createApp() {
     }),
   );
   app.use(express.urlencoded({ extended: true }));
+
+  app.use(cookieParser());
 
   app.get("/health", (_req, res) => {
     res.status(StatusCodes.OK).json({ status: "ok" });

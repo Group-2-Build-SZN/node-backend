@@ -17,6 +17,10 @@ export const refreshTokens = pgTable("refresh_tokens", {
 
     expiresAt: timestamp("expires_at").notNull(),
 
+    revokedAt: timestamp("revoked_at"),
+
+    userAgent: text("user_agent"),
+
     createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -2,8 +2,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { UserRole } from "@/constants/user-role";
 // import { TEST_USER_ID } from "@/constants/seed";
-import jwt from "jsonwebtoken";
-import { env } from "@/config/env.config";
+import { verifyAccessToken } from "@/utils/jwt";
 import { db } from "@/config/database.config";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -26,11 +25,7 @@ export const authenticate = async (
 
     const token = authHeader.split(" ")[1];
 
-    const payload = jwt.verify(token, env.JWT_SECRET) as {
-      userId: string;
-      email: string;
-      role: UserRole | null;
-    };
+    const payload = verifyAccessToken(token);
 
     const [user] = await db
       .select()
