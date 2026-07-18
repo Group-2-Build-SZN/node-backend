@@ -3,13 +3,13 @@ import { env } from "@/config/env.config";
 import { db } from "@/config/database.config";
 import { addMinutes, addDays } from "date-fns";
 import emailService from "@/services/email.service";
-import { eq, and, desc, gt } from "drizzle-orm";
+import { eq, and, desc, gt, isNull } from "drizzle-orm";
 import AppError from "@/errors/AppError";
 import { ErrorCode } from "@/constants/error-code";
 import { StatusCodes } from "http-status-codes";
 import { UserRole } from "@/constants/user-role";
 import { loginCodes, users, refreshTokens } from "@/db/schema";
-import { generateAccessToken, generateRefreshToken } from "@/utils/jwt";
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken, } from "@/utils/jwt";
 
 
 class AuthService {
@@ -120,9 +120,138 @@ class AuthService {
         };
     }
 
-    // async refresh(_refreshToken: string) {
+    async refresh(refreshToken: string) {
+        if (!refreshToken) {
+            throw AppError(
+                "Refresh token is required.",
+                StatusCodes.UNAUTHORIZED,
+                ErrorCode.UNAUTHORIZED,
+            );
+        }
 
-    // }
+        const payload = verifyRefreshToken(refreshToken);
+
+        const tokens = await db
+            .select()
+            .from(refreshTokens)
+            .where(
+                and(
+                    eq(refreshTokens.userId, payload.userId),
+                    isNull(refreshTokens.revokedAt),
+                    gt(refreshTokens.expiresAt, new Date()),
+                ),
+            );
+
+        let matchedToken: typeof tokens[number] | undefined;
+
+        for (const token of tokens) {
+            const matches = await argon2.verify(token.tokenHash, refreshToken);
+
+            if (matches) {
+                matchedToken = token;
+                break;
+            }
+        }
+
+        if (!matchedToken) {
+            throw AppError(
+                "Invalid refresh token.",
+                StatusCodes.UNAUTHORIZED,
+                ErrorCode.UNAUTHORIZED,
+            );
+        }
+
+        await db
+            .update(refreshTokens)
+            .set({
+                revokedAt: new Date(),
+            })
+            .where(eq(refreshTokens.id, matchedToken.id));
+
+        const [user] = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, payload.userId))
+            .limit(1);
+
+        if (!user) {
+            throw AppError(
+                "User not found.",
+                StatusCodes.UNAUTHORIZED,
+                ErrorCode.UNAUTHORIZED,
+            );
+        }
+
+        if (user.isBlacklisted) {
+            throw AppError(
+                "Your account has been blacklisted.",
+                StatusCodes.FORBIDDEN,
+                ErrorCode.FORBIDDEN,
+            );
+        }
+
+        const newPayload = {
+            userId: user.id,
+            email: user.email,
+            role: user.role as UserRole | null,
+        };
+
+        const newAccessToken = generateAccessToken(newPayload);
+        const newRefreshToken = generateRefreshToken(newPayload);
+
+        const newRefreshTokenHash = await argon2.hash(newRefreshToken);
+
+        await db.insert(refreshTokens).values({
+            userId: user.id,
+            tokenHash: newRefreshTokenHash,
+            expiresAt: addDays(new Date(), 7),
+        });
+
+        return {
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken,
+        };
+    }
+
+    async logout(refreshToken: string) {
+        if (!refreshToken) {
+            return;
+        }
+
+        try {
+            const payload = verifyRefreshToken(refreshToken);
+
+            const tokens = await db
+                .select()
+                .from(refreshTokens)
+                .where(
+                    and(
+                        eq(refreshTokens.userId, payload.userId),
+                        isNull(refreshTokens.revokedAt),
+                    ),
+                );
+
+            for (const token of tokens) {
+                const matches = await argon2.verify(
+                    token.tokenHash,
+                    refreshToken,
+                );
+
+                if (matches) {
+                    await db
+                        .update(refreshTokens)
+                        .set({
+                            revokedAt: new Date(),
+                        })
+                        .where(eq(refreshTokens.id, token.id));
+
+                    break;
+                }
+            }
+        } catch {
+            return;
+        }
+    }
 }
 
 

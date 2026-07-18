@@ -35,9 +35,42 @@ class AuthController {
         });
     }
 
-    // static async refresh(_req: Request, _res: Response) {
+    static async refresh(req: Request, res: Response) {
+        const refreshToken = req.cookies.refreshToken;
 
-    // }
+        const result = await authService.refresh(refreshToken);
+
+        res.cookie("refreshToken", result.refreshToken, {
+            httpOnly: true,
+            secure: env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: "/",
+        });
+
+        return res.status(StatusCodes.OK).json({
+            success: true,
+            accessToken: result.accessToken,
+        });
+    }
+
+    static async logout(req: Request, res: Response) {
+        const refreshToken = req.cookies.refreshToken;
+
+        await authService.logout(refreshToken);
+
+        res.clearCookie("refreshToken", {
+            httpOnly: true,
+            secure: env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+        });
+
+        return res.status(StatusCodes.OK).json({
+            success: true,
+            message: "Logged out successfully.",
+        });
+    }
 }
 
 export default AuthController;
