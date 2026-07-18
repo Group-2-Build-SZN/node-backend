@@ -1,0 +1,11 @@
+import "@/docs/property.doc";
+import "@/docs/review.doc";
+import "@/docs/amenity.doc";
+import "@/docs/kyc.doc";
+import "@/docs/payment.doc";
+import "@/docs/referral.doc";
+import "@/docs/saved-property.doc";
+import "@/docs/saved-filter.doc";
+import "@/docs/inquiry.doc";
+import "@/docs/user.doc";
+import "@/docs/property-report.doc";

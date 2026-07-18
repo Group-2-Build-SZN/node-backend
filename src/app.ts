@@ -1,3 +1,5 @@
+import { setupSwagger } from "@/config/swagger.config";
+import { corsMiddleware } from "@/middlewares/credentials.middleware";
 import router from "@/routes";
 import errorHandler from "@/middlewares/error-handler.middleware";
 import AppError from "@/errors/AppError";
@@ -15,7 +17,10 @@ export function createApp() {
       },
     }),
   );
+
+  app.use(corsMiddleware);
   app.use(express.urlencoded({ extended: true }));
+  setupSwagger(app);
 
   app.use(cookieParser());
 

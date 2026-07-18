@@ -1,7 +1,7 @@
 import { eq, desc } from "drizzle-orm";
 import { db } from "@/config/database.config";
 import { verifications } from "@/db/schema/users.schema";
-import dojahClient from "@/integrations/dojah";
+import dojahClient from "@/lib/dojah";
 import AppError from "@/errors/AppError";
 import { ErrorCode } from "@/constants/error-code";
 import { StatusCodes } from "http-status-codes";

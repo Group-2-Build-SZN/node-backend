@@ -1,7 +1,8 @@
 import { sql, eq, and } from "drizzle-orm";
 import { db } from "@/config/database.config";
 import { properties } from "@/db/schema/property.schema";
-import { verifications } from "@/db/schema/users.schema";
+import { savedProperties } from "@/db/schema/saved-properties.schema";
+import { users, verifications } from "@/db/schema/users.schema";
 import AppError from "@/errors/AppError";
 import { ErrorCode } from "@/constants/error-code";
 import { StatusCodes } from "http-status-codes";
@@ -10,6 +11,9 @@ import type {
   UpdatePropertyInput,
   GetPropertiesQuery,
 } from "@/validations/property.validation";
+import cloudinaryClient from "@/lib/cloudinary";
+import { property } from "zod";
+import { propertyViews } from "@/db/schema/property-views.schema";
 
 class PropertyService {
   async createProperty(ownerId: string, payload: CreatePropertyInput) {
@@ -29,7 +33,7 @@ class PropertyService {
   }
 
   // property listing screen : search, filters, map/list tohggle, verified-only, card-level trust preview
-  async getProperties(query: GetPropertiesQuery) {
+  async getProperties(query: GetPropertiesQuery, requestingUserId?: string) {
     const {
       page,
       limit,
@@ -44,36 +48,80 @@ class PropertyService {
       lat,
       lng,
       radiusKm,
+      listingPurpose,
     } = query;
     const offset = (page - 1) * limit;
 
-    const rows = await db.execute(sql`
-      SELECT p.*, COALESCE (ROUND(AVG(r.water_rating)), 0) AS water_score, COALESCE (ROUND(AVG(r.electricity_rating)), 0) AS power_score, COALESCE (ROUND(AVG(r.security_rating)), 0) AS security_score, COALESCE (ROUND(AVG((r.water_rating + r.electricity_rating + r.security_rating + r.road_accessibility_rating + r.cleanliness_rating) / 5.0) / 5 * 100), 0) AS trust_score ${lat !== undefined && lng !== undefined ? sql`, ROUND (ST_Distance(p.location::geography, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography)) AS distance_meters` : sql``}
-      FROM properties p 
-      LEFT JOIN reviews r ON r.property_id = p.id AND r.review_type = 'verified_resident'
-      LEFT JOIN verifications v ON v.user_id = p.owner_id AND v.status = 'verified'
-      WHERE p.availability_status = 'available' AND p.is_published = true ${search ? sql`AND (p.listing_title ILIKE ${"%" + search + "%"} OR p.address ILIKE ${"%" + search + "%"})` : sql``} ${
-        propertyType && propertyType.length > 0
-          ? sql`AND p.property_type = ANY(ARRAY[${sql.join(
-              propertyType.map((t) => sql`${t}::property_type`),
-              sql`,`,
-            )}])`
-          : sql``
-      } ${bedrooms !== undefined ? sql`AND p.bedrooms = ${bedrooms}` : sql``} ${bathrooms !== undefined ? sql`AND p.bathrooms = ${bathrooms}` : sql``} ${
-        features && features.length > 0
-          ? sql`AND p.features @> ARRAY[${sql.join(
-              features.map((f) => sql`${f}`),
-              sql`, `,
-            )}]::text[]`
-          : sql``
-      } ${verifiedOnly ? sql`AND v.id IS NOT NULL` : sql``} ${minPrice ? sql`AND p.price >= ${minPrice}` : sql``} ${maxPrice ? sql`AND p.price <= ${maxPrice}` : sql``} ${lat !== undefined && lng !== undefined ? sql`AND ST_DWithin(p.location:;geography, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography, ${radiusKm * 1000})` : sql``}
-      GROUP BY p.id ${lat !== undefined && lng !== undefined ? sql`ORDER BY p.location <-> ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)` : sql`ORDER BY p.created_at DESC`}
-      LIMIT ${limit} OFFSET ${offset}`);
+    const whereClause = sql`
+    p.availability_status = 'available'
+    AND p.is_published = true
+    ${search ? sql`AND (p.listing_title ILIKE ${"%" + search + "%"} OR p.address ILIKE ${"%" + search + "%"})` : sql``}
+    ${
+      propertyType && propertyType.length > 0
+        ? sql`AND p.property_type = ANY(ARRAY[${sql.join(
+            propertyType.map((t) => sql`${t}::property_type`),
+            sql`, `,
+          )}])`
+        : sql``
+    }
+    ${bedrooms !== undefined ? sql`AND p.bedrooms = ${bedrooms}` : sql``}
+    ${bathrooms !== undefined ? sql`AND p.bathrooms = ${bathrooms}` : sql``}
+    ${
+      features && features.length > 0
+        ? sql`AND p.features @> ARRAY[${sql.join(
+            features.map((f) => sql`${f}`),
+            sql`, `,
+          )}]::text[]`
+        : sql``
+    }
+    ${verifiedOnly ? sql`AND v.id IS NOT NULL` : sql``}
+    ${minPrice ? sql`AND p.price >= ${minPrice}` : sql``}
+    ${maxPrice ? sql`AND p.price <= ${maxPrice}` : sql``}
+    ${lat !== undefined && lng !== undefined ? sql`AND ST_DWithin(p.location::geography, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography, ${radiusKm * 1000})` : sql``}
+    ${query.listingPurpose ? sql`AND p.listing_purpose = ${query.listingPurpose}::listing_purpose` : sql``}
+  `;
 
-    return rows.rows;
+    const countResult = await db.execute(sql`
+    SELECT COUNT(DISTINCT p.id) AS total
+    FROM properties p
+    LEFT JOIN verifications v ON v.user_id = p.owner_id AND v.status = 'verified'
+    WHERE ${whereClause}
+  `);
+    const total = Number((countResult.rows[0] as { total: string }).total);
+
+    const rows = await db.execute(sql`
+    SELECT
+      p.*,
+      COALESCE(ROUND(AVG(r.water_rating)), 0) AS water_score,
+      COALESCE(ROUND(AVG(r.electricity_rating)), 0) AS power_score,
+      COALESCE(ROUND(AVG(r.security_rating)), 0) AS security_score,
+      COALESCE(
+        ROUND(
+          AVG(
+            (r.water_rating + r.electricity_rating + r.security_rating + r.road_accessibility_rating + r.cleanliness_rating) / 5.0
+          ) / 5 * 100
+        ),
+        0
+      ) AS trust_score
+      ${lat !== undefined && lng !== undefined ? sql`, ROUND(ST_Distance(p.location::geography, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography)) AS distance_meters` : sql``}
+      ${requestingUserId ? sql`, (sp.id IS NOT NULL) AS is_saved` : sql`, false AS is_saved`}
+    FROM properties p
+    LEFT JOIN reviews r ON r.property_id = p.id AND r.review_type = 'verified_resident'
+    LEFT JOIN verifications v ON v.user_id = p.owner_id AND v.status = 'verified'
+    ${requestingUserId ? sql`LEFT JOIN saved_properties sp ON sp.property_id = p.id AND sp.user_id = ${requestingUserId}` : sql``}
+    WHERE ${whereClause}
+    GROUP BY p.id${requestingUserId ? sql`, sp.id` : sql``}
+    ${lat !== undefined && lng !== undefined ? sql`ORDER BY p.location <-> ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)` : sql`ORDER BY p.created_at DESC`}
+    LIMIT ${limit} OFFSET ${offset}
+  `);
+
+    return {
+      data: rows.rows,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
-  async getPropertyById(id: string) {
+  async getPropertyById(id: string, requestingUserId?: string) {
     const [property] = await db
       .select()
       .from(properties)
@@ -87,10 +135,93 @@ class PropertyService {
       );
     }
 
+    // Track or update the user's property view history here
+    if (requestingUserId) {
+      await db
+        .insert(propertyViews)
+        .values({ userId: requestingUserId, propertyId: id })
+        .onConflictDoUpdate({
+          target: [propertyViews.userId, propertyViews.propertyId],
+          set: { viewedAt: new Date() },
+        });
+    }
+
     const trekCheck = await this.getTrekCheck(id);
     const trustSummary = await this.getTrustSummary(id);
+    const owner = await this.getOwnerInfo(property.ownerId, requestingUserId);
 
-    return { ...property, trekCheck, trustSummary };
+    let isSaved = false;
+    if (requestingUserId) {
+      const [saved] = await db
+        .select()
+        .from(savedProperties)
+        .where(
+          and(
+            eq(savedProperties.propertyId, id),
+            eq(savedProperties.userId, requestingUserId),
+          ),
+        );
+      isSaved = Boolean(saved);
+    }
+
+    return { isSaved, ...property, trekCheck, trustSummary, owner };
+  }
+
+  async getOwnerInfo(ownerId: string, requestingUserId?: string) {
+    const result = await db.execute(sql`
+      SELECT u.id, u.first_name, u.last_name, u.created_at AS member_since, (v.id IS NOT NULL) AS is_verified
+      FROM users u
+      LEFT JOIN verifications v ON v.user_id = u.id AND v.status='verified'
+      WHERE u.id = ${ownerId}
+      LIMIT 1
+      `);
+
+    const owner = result.rows[0] as {
+      id: string;
+      first_name: string | null;
+      last_name: string | null;
+      member_since: string;
+      is_verified: boolean;
+    };
+
+    let canSeeContact = false;
+
+    if (requestingUserId) {
+      const [requester] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, requestingUserId));
+      canSeeContact =
+        requester?.id === ownerId ||
+        (requester?.isPremium === true &&
+          (!requester.premiumUntil || requester.premiumUntil > new Date()));
+    }
+
+    if (!canSeeContact) {
+      return {
+        id: owner.id,
+        firstName: owner.first_name,
+        memberSince: owner.member_since,
+        isVerified: owner.is_verified,
+        contact: null,
+      };
+    }
+
+    const [ownerFull] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, ownerId));
+
+    return {
+      id: owner.id,
+      firstName: owner.first_name,
+      lastName: owner.last_name,
+      memberSince: owner.is_verified,
+      contact: {
+        phone: ownerFull.phone,
+        email: ownerFull.email,
+      },
+    };
   }
 
   // trust score + per category bars shown on property details / video walkthrough screens
@@ -145,6 +276,29 @@ class PropertyService {
     return property;
   }
 
+  async getRecommendedProperties(limit = 10) {
+    const rows = await db.execute(sql`
+    SELECT
+      p.*,
+      COALESCE(
+        ROUND(
+          AVG(
+            (r.water_rating + r.electricity_rating + r.security_rating + r.road_accessibility_rating + r.cleanliness_rating) / 5.0
+          ) / 5 * 100
+        ),
+        0
+      ) AS trust_score
+    FROM properties p
+    LEFT JOIN reviews r ON r.property_id = p.id AND r.review_type = 'verified_resident'
+    WHERE p.availability_status = 'available' AND p.is_published = true
+    GROUP BY p.id
+    ORDER BY trust_score DESC NULLS LAST, p.created_at DESC
+    LIMIT ${limit}
+  `);
+
+    return rows.rows;
+  }
+
   async publishProperty(ownerId: string, id: string) {
     const [verification] = await db
       .select()
@@ -194,6 +348,60 @@ class PropertyService {
     }
 
     return true;
+  }
+
+  async addMedia(
+    ownerId: string,
+    propertyId: string,
+    photos: Express.Multer.File[],
+    videos: Express.Multer.File[],
+  ) {
+    const [property] = await db
+      .select()
+      .from(properties)
+      .where(
+        and(eq(properties.id, propertyId), eq(properties.ownerId, ownerId)),
+      );
+
+    if (!property) {
+      throw AppError(
+        "Property not found or not owned by you",
+        StatusCodes.NOT_FOUND,
+        ErrorCode.RESOURCE_NOT_FOUND,
+      );
+    }
+
+    const uploadedPhotoUrls = await Promise.all(
+      photos.map((file) =>
+        cloudinaryClient.uploadBuffer(
+          file.buffer,
+          "ulo/properties/photos",
+          "image",
+        ),
+      ),
+    );
+
+    const uploadedVideoUrls = await Promise.all(
+      videos.map((file) =>
+        cloudinaryClient.uploadBuffer(
+          file.buffer,
+          "ulo/properties/videos",
+          "video",
+        ),
+      ),
+    );
+
+    const [updated] = await db
+      .update(properties)
+      .set({
+        photoUrls: [...(property.photoUrls ?? []), ...uploadedPhotoUrls],
+        videoUrls: [...(property.videoUrls ?? []), ...uploadedVideoUrls],
+        updatedAt: new Date(),
+      })
+      .where(eq(properties.id, propertyId))
+      .returning();
+
+    return updated;
   }
 }
 
