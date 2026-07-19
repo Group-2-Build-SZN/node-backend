@@ -20,3 +20,6 @@ export type RequestCodeInput = z.infer<typeof requestCodeSchema>;
 export type VerifyCodeInput = z.infer<typeof verifyCodeSchema>;
 export type CompleteProfileInput = z.infer<typeof completeProfileSchema>;
 export const refreshTokenSchema = z.object({});
+export const googleLoginSchema = z.object({
+    idToken: z.string().min(1, "Google ID token is required."),
+});

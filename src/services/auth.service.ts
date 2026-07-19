@@ -10,9 +10,74 @@ import { StatusCodes } from "http-status-codes";
 import { UserRole } from "@/constants/user-role";
 import { loginCodes, users, refreshTokens } from "@/db/schema";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, } from "@/utils/jwt";
+import { OAuth2Client } from "google-auth-library";
 
+const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
 
 class AuthService {
+    private async createSession(user: typeof users.$inferSelect) {
+        const payload = {
+            userId: user.id,
+            email: user.email,
+            role: user.role as UserRole | null,
+        };
+
+        const accessToken = generateAccessToken(payload);
+        const refreshToken = generateRefreshToken(payload);
+
+        const refreshTokenHash = await argon2.hash(refreshToken);
+
+        await db.insert(refreshTokens).values({
+            userId: user.id,
+            tokenHash: refreshTokenHash,
+            expiresAt: addDays(new Date(), 7),
+        });
+
+        const isProfileComplete = Boolean(
+            user.firstName &&
+            user.lastName &&
+            user.phone &&
+            user.role,
+        );
+
+        return {
+            accessToken,
+            refreshToken,
+            user,
+            isProfileComplete,
+        };
+    }
+
+    private async findOrCreateGoogleUser(email: string, googleId: string) {
+        let [user] = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, email))
+            .limit(1);
+
+        if (!user) {
+            [user] = await db
+                .insert(users)
+                .values({
+                    email,
+                    googleId,
+                    role: null,
+                })
+                .returning();
+        } else if (!user.googleId) {
+            [user] = await db
+                .update(users)
+                .set({
+                    googleId,
+                    updatedAt: new Date(),
+                })
+                .where(eq(users.id, user.id))
+                .returning();
+        }
+
+        return user;
+    }
+
     async requestCode(email: string) {
         const otpLength = env.OTP_CODE_LENGTH;
 
@@ -93,31 +158,8 @@ class AuthService {
                 .returning();
         }
 
-        const payload = {
-            userId: user.id,
-            email: user.email,
-            role: user.role as UserRole | null,
-        };
-
-        const accessToken = generateAccessToken(payload);
-
-        const refreshToken = generateRefreshToken(payload);
-
-        const refreshTokenHash = await argon2.hash(refreshToken);
-
-        const refreshExpiresAt = addDays(new Date(), 7);
-
-        await db.insert(refreshTokens).values({
-            userId: user.id,
-            tokenHash: refreshTokenHash,
-            expiresAt: refreshExpiresAt,
-        });
-
-        return {
-            accessToken,
-            refreshToken,
-            user,
-        };
+        return this.createSession(user);
+    
     }
 
     async refresh(refreshToken: string) {
@@ -251,6 +293,98 @@ class AuthService {
         } catch {
             return;
         }
+    }
+
+    async completeProfile(
+        userId: string,
+        data: {
+            firstName: string;
+            lastName: string;
+            phone: string;
+            role: UserRole;
+        },
+    ) {
+        const [user] = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, userId))
+            .limit(1);
+
+        if (!user) {
+            throw AppError(
+                "User not found.",
+                StatusCodes.NOT_FOUND,
+                ErrorCode.RESOURCE_NOT_FOUND,
+            );
+        }
+
+        if (user.role !== null) {
+            throw AppError(
+                "Profile has already been completed.",
+                StatusCodes.BAD_REQUEST,
+                ErrorCode.INVALID_INPUT,
+            );
+        }
+
+        const [existingPhone] = await db
+            .select()
+            .from(users)
+            .where(eq(users.phone, data.phone))
+            .limit(1);
+
+        if (existingPhone && existingPhone.id !== user.id) {
+            throw AppError(
+                "Phone number already exists.",
+                StatusCodes.CONFLICT,
+                ErrorCode.DUPLICATE_ENTRY,
+            );
+        }
+
+        const [updatedUser] = await db
+            .update(users)
+            .set({
+                firstName: data.firstName,
+                lastName: data.lastName,
+                phone: data.phone,
+                role: data.role,
+                updatedAt: new Date(),
+            })
+            .where(eq(users.id, user.id))
+            .returning();
+
+        return updatedUser;
+    }
+
+    async googleLogin(idToken: string) {
+        const ticket = await googleClient.verifyIdToken({
+            idToken,
+            audience: env.GOOGLE_CLIENT_ID,
+        });
+
+        const payload = ticket.getPayload();
+
+        if (!payload?.email || !payload.sub) {
+            throw AppError(
+                "Invalid Google token.",
+                StatusCodes.UNAUTHORIZED,
+                ErrorCode.UNAUTHORIZED,
+            );
+        }
+
+        const user = await this.findOrCreateGoogleUser(
+            payload.email,
+            payload.sub,
+        );
+
+        if (user.isBlacklisted) {
+            throw AppError(
+                "Your account has been blacklisted.",
+                StatusCodes.FORBIDDEN,
+                ErrorCode.FORBIDDEN,
+            );
+        }
+
+        return this.createSession(user);
     }
 }
 

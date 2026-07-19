@@ -4,6 +4,27 @@ import authService from "@/services/auth.service";
 import { env } from "@/config/env.config";
 
 class AuthController {
+    static async googleLogin(req: Request, res: Response) {
+        const { idToken } = req.body;
+
+        const result = await authService.googleLogin(idToken);
+
+        res.cookie("refreshToken", result.refreshToken, {
+            httpOnly: true,
+            secure: env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: "/",
+        });
+
+        return res.status(StatusCodes.OK).json({
+            success: true,
+            accessToken: result.accessToken,
+            user: result.user,
+            isProfileComplete: result.isProfileComplete,
+        });
+    }
+
     static async requestCode(req: Request, res: Response) {
         const { email } = req.body;
 
@@ -71,6 +92,20 @@ class AuthController {
             message: "Logged out successfully.",
         });
     }
+
+
+    static async completeProfile(req: Request, res: Response) {
+        const result = await authService.completeProfile(
+            req.user!.id,
+            req.body,
+        );
+
+        return res.status(StatusCodes.OK).json({
+            success: true,
+            user: result,
+        });
+    }
+
 }
 
 export default AuthController;
