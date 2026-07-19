@@ -3,25 +3,38 @@ import { StatusCodes } from "http-status-codes";
 import authService from "@/services/auth.service";
 import { env } from "@/config/env.config";
 
+const REFRESH_COOKIE_OPTIONS = {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    path: "/",
+};
+
+function getRequestMeta(req: Request) {
+    return {
+        userAgent: req.headers["user-agent"],
+        ip: req.ip,
+    };
+}
+
 class AuthController {
-    static async googleLogin(req: Request, res: Response) {
+    static async googleSignIn(req: Request, res: Response) {
         const { idToken } = req.body;
 
-        const result = await authService.googleLogin(idToken);
+        const meta = getRequestMeta(req);
 
-        res.cookie("refreshToken", result.refreshToken, {
-            httpOnly: true,
-            secure: env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-            path: "/",
-        });
+        const result = await authService.googleSignIn(idToken, meta);
+
+        res.cookie("refreshToken", result.refreshToken, REFRESH_COOKIE_OPTIONS);
 
         return res.status(StatusCodes.OK).json({
             success: true,
-            accessToken: result.accessToken,
-            user: result.user,
-            isProfileComplete: result.isProfileComplete,
+            data: {
+                user: result.user,
+                accessToken: result.accessToken,
+                isProfileComplete: result.isProfileComplete,
+            },
         });
     }
 
@@ -32,46 +45,42 @@ class AuthController {
 
         return res.status(StatusCodes.OK).json({
             success: true,
-            ...result,
+            data: result,
         });
     }
 
     static async verifyCode(req: Request, res: Response) {
         const { email, code } = req.body;
 
-        const result = await authService.verifyCode(email, code);
+        const meta = getRequestMeta(req);
 
-        res.cookie("refreshToken", result.refreshToken, {
-            httpOnly: true,
-            secure: env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-            path: "/",
-        });
+        const result = await authService.verifyCode(email, code, meta);
+
+        res.cookie("refreshToken", result.refreshToken, REFRESH_COOKIE_OPTIONS);
 
         return res.status(StatusCodes.OK).json({
             success: true,
-            accessToken: result.accessToken,
-            user: result.user,
+            data: {
+                user: result.user,
+                accessToken: result.accessToken,
+            },
         });
     }
 
     static async refresh(req: Request, res: Response) {
         const refreshToken = req.cookies.refreshToken;
 
-        const result = await authService.refresh(refreshToken);
+        const meta = getRequestMeta(req);
 
-        res.cookie("refreshToken", result.refreshToken, {
-            httpOnly: true,
-            secure: env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-            path: "/",
-        });
+        const result = await authService.refresh(refreshToken, meta);
+
+        res.cookie("refreshToken", result.refreshToken, REFRESH_COOKIE_OPTIONS);
 
         return res.status(StatusCodes.OK).json({
             success: true,
-            accessToken: result.accessToken,
+            data: {
+                accessToken: result.accessToken,
+            },
         });
     }
 
@@ -102,7 +111,9 @@ class AuthController {
 
         return res.status(StatusCodes.OK).json({
             success: true,
-            user: result,
+            data: {
+                user: result,
+            },
         });
     }
 

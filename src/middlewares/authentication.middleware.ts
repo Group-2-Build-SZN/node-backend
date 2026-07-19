@@ -8,29 +8,37 @@ import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { StatusCodes } from "http-status-codes";
 
+function extractToken(req: Request): string | null {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader?.startsWith("Bearer ")) {
+    return null;
+  }
+
+  return authHeader.split(" ")[1] ?? null;
+}
+
 export const authenticate = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
   try {
-    const authHeader = req.headers.authorization;
+    const token = extractToken(req);
 
-    if (!authHeader?.startsWith("Bearer ")) {
+    if (!token) {
       return res.status(StatusCodes.UNAUTHORIZED).json({
         success: false,
         message: "Unauthorized",
       });
     }
 
-    const token = authHeader.split(" ")[1];
-
     const payload = verifyAccessToken(token);
 
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.id, payload.userId))
+      .where(eq(users.id, payload.id))
       .limit(1);
 
     if (!user) {
@@ -50,7 +58,7 @@ export const authenticate = async (
     req.user = {
       id: user.id,
       email: user.email,
-      role: user.role as UserRole | null,
+      role: user.role as UserRole,
     };
 
     next();
@@ -62,6 +70,40 @@ export const authenticate = async (
   }
 };
 
+export const attachUserIfPresent = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const token = extractToken(req);
+
+    if (!token) {
+      return next();
+    }
+
+    const payload = verifyAccessToken(token);
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, payload.id))
+      .limit(1);
+
+    if (user && !user.isBlacklisted) {
+      req.user = {
+        id: user.id,
+        email: user.email,
+        role: user.role as UserRole,
+      };
+    }
+
+    next();
+  } catch {
+    next();
+  }
+};
+
 export const authorize = (...roles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (
@@ -69,7 +111,7 @@ export const authorize = (...roles: UserRole[]) => {
       req.user.role === null ||
       !roles.includes(req.user.role)
     ) {
-      return res.status(403).json({
+      return res.status(StatusCodes.FORBIDDEN).json({
         success: false,
         message: "Forbidden",
       });

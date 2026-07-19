@@ -3,34 +3,45 @@ import { env } from "@/config/env.config";
 import { db } from "@/config/database.config";
 import { addMinutes, addDays } from "date-fns";
 import emailService from "@/services/email.service";
-import { eq, and, desc, gt, isNull } from "drizzle-orm";
+import referralService from "@/services/referral.service";
+import { eq, and, gt, desc } from "drizzle-orm";
 import AppError from "@/errors/AppError";
 import { ErrorCode } from "@/constants/error-code";
 import { StatusCodes } from "http-status-codes";
 import { UserRole } from "@/constants/user-role";
 import { loginCodes, users, refreshTokens } from "@/db/schema";
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken, } from "@/utils/jwt";
+import {
+    generateAccessToken,
+    generateOpaqueRefreshToken,
+    hashRefreshToken,
+} from "@/utils/jwt";
 import { OAuth2Client } from "google-auth-library";
 
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
 
+interface SessionMeta {
+    userAgent?: string;
+    ip?: string;
+}
+
 class AuthService {
-    private async createSession(user: typeof users.$inferSelect) {
+    private async issueTokens(user: typeof users.$inferSelect, meta: SessionMeta = {}) {
         const payload = {
-            userId: user.id,
+            id: user.id,
             email: user.email,
-            role: user.role as UserRole | null,
+            role: user.role as UserRole,
         };
 
         const accessToken = generateAccessToken(payload);
-        const refreshToken = generateRefreshToken(payload);
-
-        const refreshTokenHash = await argon2.hash(refreshToken);
+        const refreshToken = generateOpaqueRefreshToken();
+        const refreshTokenHash = hashRefreshToken(refreshToken);
 
         await db.insert(refreshTokens).values({
             userId: user.id,
             tokenHash: refreshTokenHash,
             expiresAt: addDays(new Date(), 7),
+            userAgent: meta.userAgent,
+            ipAddress: meta.ip,
         });
 
         const isProfileComplete = Boolean(
@@ -103,7 +114,7 @@ class AuthService {
         };
     }
 
-    async verifyCode(email: string, code: string) {
+    async verifyCode(email: string, code: string, meta: SessionMeta = {}) {
         const [loginCode] = await db
             .select()
             .from(loginCodes)
@@ -116,7 +127,7 @@ class AuthService {
             )
             .orderBy(desc(loginCodes.createdAt))
             .limit(1);
-        
+
         if (!loginCode) {
             throw AppError(
                 "Invalid or expired login code.",
@@ -141,13 +152,13 @@ class AuthService {
                 consumed: true,
             })
             .where(eq(loginCodes.id, loginCode.id));
-        
+
         let [user] = await db
             .select()
             .from(users)
             .where(eq(users.email, email))
             .limit(1);
-        
+
         if (!user) {
             [user] = await db
                 .insert(users)
@@ -158,11 +169,10 @@ class AuthService {
                 .returning();
         }
 
-        return this.createSession(user);
-    
+        return this.issueTokens(user, meta);
     }
 
-    async refresh(refreshToken: string) {
+    async refresh(refreshToken: string, meta: SessionMeta = {}) {
         if (!refreshToken) {
             throw AppError(
                 "Refresh token is required.",
@@ -171,31 +181,19 @@ class AuthService {
             );
         }
 
-        const payload = verifyRefreshToken(refreshToken);
+        const tokenHash = hashRefreshToken(refreshToken);
 
-        const tokens = await db
+        const [matchedToken] = await db
             .select()
             .from(refreshTokens)
-            .where(
-                and(
-                    eq(refreshTokens.userId, payload.userId),
-                    isNull(refreshTokens.revokedAt),
-                    gt(refreshTokens.expiresAt, new Date()),
-                ),
-            );
+            .where(eq(refreshTokens.tokenHash, tokenHash))
+            .limit(1);
 
-        let matchedToken: typeof tokens[number] | undefined;
-
-        for (const token of tokens) {
-            const matches = await argon2.verify(token.tokenHash, refreshToken);
-
-            if (matches) {
-                matchedToken = token;
-                break;
-            }
-        }
-
-        if (!matchedToken) {
+        if (
+            !matchedToken ||
+            matchedToken.revoked ||
+            matchedToken.expiresAt < new Date()
+        ) {
             throw AppError(
                 "Invalid refresh token.",
                 StatusCodes.UNAUTHORIZED,
@@ -206,14 +204,14 @@ class AuthService {
         await db
             .update(refreshTokens)
             .set({
-                revokedAt: new Date(),
+                revoked: true,
             })
             .where(eq(refreshTokens.id, matchedToken.id));
 
         const [user] = await db
             .select()
             .from(users)
-            .where(eq(users.id, payload.userId))
+            .where(eq(users.id, matchedToken.userId))
             .limit(1);
 
         if (!user) {
@@ -233,20 +231,21 @@ class AuthService {
         }
 
         const newPayload = {
-            userId: user.id,
+            id: user.id,
             email: user.email,
-            role: user.role as UserRole | null,
+            role: user.role as UserRole,
         };
 
         const newAccessToken = generateAccessToken(newPayload);
-        const newRefreshToken = generateRefreshToken(newPayload);
-
-        const newRefreshTokenHash = await argon2.hash(newRefreshToken);
+        const newRefreshToken = generateOpaqueRefreshToken();
+        const newRefreshTokenHash = hashRefreshToken(newRefreshToken);
 
         await db.insert(refreshTokens).values({
             userId: user.id,
             tokenHash: newRefreshTokenHash,
             expiresAt: addDays(new Date(), 7),
+            userAgent: meta.userAgent,
+            ipAddress: meta.ip,
         });
 
         return {
@@ -260,39 +259,23 @@ class AuthService {
             return;
         }
 
-        try {
-            const payload = verifyRefreshToken(refreshToken);
+        const tokenHash = hashRefreshToken(refreshToken);
 
-            const tokens = await db
-                .select()
-                .from(refreshTokens)
-                .where(
-                    and(
-                        eq(refreshTokens.userId, payload.userId),
-                        isNull(refreshTokens.revokedAt),
-                    ),
-                );
+        await db
+            .update(refreshTokens)
+            .set({
+                revoked: true,
+            })
+            .where(eq(refreshTokens.tokenHash, tokenHash));
+    }
 
-            for (const token of tokens) {
-                const matches = await argon2.verify(
-                    token.tokenHash,
-                    refreshToken,
-                );
-
-                if (matches) {
-                    await db
-                        .update(refreshTokens)
-                        .set({
-                            revokedAt: new Date(),
-                        })
-                        .where(eq(refreshTokens.id, token.id));
-
-                    break;
-                }
-            }
-        } catch {
-            return;
-        }
+    async revokeAllSessions(userId: string) {
+        await db
+            .update(refreshTokens)
+            .set({
+                revoked: true,
+            })
+            .where(eq(refreshTokens.userId, userId));
     }
 
     async completeProfile(
@@ -302,6 +285,7 @@ class AuthService {
             lastName: string;
             phone: string;
             role: UserRole;
+            referralCode?: string;
         },
     ) {
         const [user] = await db
@@ -352,10 +336,17 @@ class AuthService {
             .where(eq(users.id, user.id))
             .returning();
 
+        if (data.referralCode) {
+            await referralService.applyReferralCode(
+                updatedUser.id,
+                data.referralCode,
+            );
+        }
+
         return updatedUser;
     }
 
-    async googleLogin(idToken: string) {
+    async googleSignIn(idToken: string, meta: SessionMeta = {}) {
         const ticket = await googleClient.verifyIdToken({
             idToken,
             audience: env.GOOGLE_CLIENT_ID,
@@ -384,10 +375,8 @@ class AuthService {
             );
         }
 
-        return this.createSession(user);
+        return this.issueTokens(user, meta);
     }
 }
-
-
 
 export default new AuthService();

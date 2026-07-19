@@ -1,32 +1,28 @@
 import jwt from "jsonwebtoken";
+import { randomBytes, createHash } from "node:crypto";
 import { env } from "@/config/env.config";
 import { UserRole } from "@/constants/user-role";
 
-export interface JwtPayload {
-    userId: string;
+export interface TokenPayload {
+    id: string;
     email: string;
-    role: UserRole | null;
+    role: UserRole;
 }
 
-const ACCESS_TOKEN_EXPIRES_IN = "15m";
-const REFRESH_TOKEN_EXPIRES_IN = "7d";
-
-export function generateAccessToken(payload: JwtPayload) {
+export function generateAccessToken(payload: TokenPayload) {
     return jwt.sign(payload, env.JWT_SECRET, {
-        expiresIn: ACCESS_TOKEN_EXPIRES_IN,
-    });
-}
-
-export function generateRefreshToken(payload: JwtPayload) {
-    return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
-        expiresIn: REFRESH_TOKEN_EXPIRES_IN,
+        expiresIn: env.JWT_ACCESS_EXPIRY as jwt.SignOptions["expiresIn"],
     });
 }
 
 export function verifyAccessToken(token: string) {
-    return jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+    return jwt.verify(token, env.JWT_SECRET) as TokenPayload;
 }
 
-export function verifyRefreshToken(token: string) {
-    return jwt.verify(token, env.JWT_REFRESH_SECRET) as JwtPayload;
+export function generateOpaqueRefreshToken() {
+    return randomBytes(64).toString("hex");
+}
+
+export function hashRefreshToken(token: string) {
+    return createHash("sha256").update(token).digest("hex");
 }

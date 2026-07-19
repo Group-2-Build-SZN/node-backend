@@ -6,7 +6,7 @@ declare global {
       user?: {
         id: string;
         email: string;
-        role: UserRole | null;
+        role: UserRole;
       };
       validatedQuery?: unknown;
       rawBody?: Buffer;

@@ -2,35 +2,37 @@ import { Router } from "express";
 import AuthController from "@/controllers/auth.controller";
 import { validateSchema } from "@/middlewares/validation.middleware";
 import { authenticate } from "@/middlewares/authentication.middleware";
+import { authRateLimiter } from "@/middlewares/rate-limiter.middleware";
 import {
     requestCodeSchema,
     verifyCodeSchema,
     completeProfileSchema,
-    googleLoginSchema
+    googleSignInSchema
 } from "@/validations/auth.validation";
 
 const router = Router();
 
 router.post(
     "/google",
-    validateSchema(googleLoginSchema),
-    AuthController.googleLogin,
+    validateSchema(googleSignInSchema),
+    AuthController.googleSignIn,
 );
 
 router.post(
     "/request-code",
+    authRateLimiter,
     validateSchema(requestCodeSchema),
     AuthController.requestCode,
 );
 
 router.post(
     "/verify-code",
-    validateSchema(verifyCodeSchema),
+    validateSchema(verifyCodeSchema, "body"),
     AuthController.verifyCode,
 );
 
 router.patch(
-    "/profile",
+    "/complete-profile",
     authenticate,
     validateSchema(completeProfileSchema),
     AuthController.completeProfile,
