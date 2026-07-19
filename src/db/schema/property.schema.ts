@@ -29,6 +29,8 @@ export const availabilityStatusEnum = pgEnum("availability_status", [
   "under_review",
 ]);
 
+export const listingPurposeEnum = pgEnum("listing_purpose", ["rent", "sale"]);
+
 export const properties = pgTable(
   "properties",
   {
@@ -37,6 +39,9 @@ export const properties = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     listingTitle: text("listing_title").notNull(),
+    listingPurpose: listingPurposeEnum("listing_purpose")
+      .notNull()
+      .default("rent"),
     description: text("description"),
     propertyType: propertyTypeEnum("property_type").notNull(),
     bedrooms: integer("bedrooms").notNull().default(0),
@@ -49,6 +54,7 @@ export const properties = pgTable(
       srid: 4326,
     }).notNull(),
     videoUrls: text("video_urls").array(),
+    photoUrls: text("photo_urls").array(),
     features: text("features").array(), //e.g.["parking","generator"]
     flagCount: integer("flag_count").notNull().default(0),
     availabilityStatus: availabilityStatusEnum("availability_status")

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 export const propertyTypeValues = [
   "self_contained",
@@ -7,11 +7,13 @@ export const propertyTypeValues = [
   "two_bedroom_flat",
   "three_bedroom_flat",
   "duplex",
+  "bungalow",
   "shared_apartment",
 ] as const;
 
 export const createPropertySchema = z.object({
   listingTitle: z.string().trim().min(1).max(150),
+  listingPurpose: z.enum(["rent", "sale"]).default("rent"),
   description: z.string().trim().max(1000).optional(),
   propertyType: z.enum(propertyTypeValues),
   bedrooms: z.coerce.number().int().min(0).max(20).default(0),
@@ -30,13 +32,19 @@ export const propertyIdSchema = z.object({
   id: z.string().uuid("Invalid property ID"),
 });
 
-const commaSeparated = z.string().transform((val) => val.split(",").map((v) => v.trim()).filter(Boolean));
+const commaSeparated = z.string().transform((val) =>
+  val
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean),
+);
 
 export const getPropertiesQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(50).optional().default(20),
   search: z.string().trim().max(200).optional(),
   propertyType: commaSeparated.optional(),
+  listingPurpose: z.enum(["rent", "sale"]).optional(),
   bedrooms: z.coerce.number().int().min(0).optional(),
   bathrooms: z.coerce.number().int().min(0).optional(),
   features: commaSeparated.optional(),

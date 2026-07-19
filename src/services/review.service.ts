@@ -6,6 +6,7 @@ import AppError from "@/errors/AppError";
 import { ErrorCode } from "@/constants/error-code";
 import { StatusCodes } from "http-status-codes";
 import type { CreateReviewInput } from "@/validations/review.validation";
+import cloudinaryClient from "@/lib/cloudinary";
 
 const GEOFENCE_RADIUS_METERS = 150;
 
@@ -14,6 +15,7 @@ class ReviewService {
     reviewerId: string,
     propertyId: string,
     payload: CreateReviewInput,
+    photos?: Express.Multer.File[],
   ) {
     const [property] = await db
       .select()
@@ -41,6 +43,16 @@ class ReviewService {
         ? "verified_resident"
         : "community_tip";
 
+    const uploadedPhotoUrls = await Promise.all(
+      (photos ?? []).map((file) =>
+        cloudinaryClient.uploadBuffer(
+          file.buffer,
+          "ulo/reviews/photos",
+          "image",
+        ),
+      ),
+    );
+
     const [review] = await db
       .insert(reviews)
       .values({
@@ -51,23 +63,37 @@ class ReviewService {
         submittedLat,
         submittedLng,
         distanceFromPropertyMetres: distanceMeters,
+        photoUrls: uploadedPhotoUrls.length > 0 ? uploadedPhotoUrls : null,
       })
       .returning();
 
     return review;
   }
 
-  async getPropertyReviews(propertyId: string) {
-    const rows = await db
-      .select()
-      .from(reviews)
-      .where(eq(reviews.propertyId, propertyId));
+  async getPropertyReviews(propertyId: string, page = 1, limit = 20) {
+    const offset = (page - 1) * limit;
 
+    const countResult = await db.execute(sql`
+    SELECT COUNT(*) AS total FROM reviews WHERE property_id = ${propertyId}
+  `);
+    const total = Number((countResult.rows[0] as { total: string }).total);
+
+    const rows = await db.execute(sql`
+      SELECT r.*, u.first_name AS reviewer_first_name, u.last_name AS reviewer_last_name
+      FROM reviews r
+      JOIN users u ON u.id = r.reviewer_id
+      WHERE r.property_id = ${propertyId}
+      ORDER BY r.created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+      `);
     return {
-      verifiedResident: rows.filter(
-        (r) => r.reviewType === "verified_resident",
+      verifiedResident: rows.rows.filter(
+        (r: any) => r.review_type === "verified_resident",
       ),
-      communityTip: rows.filter((r) => r.reviewType === "community_tip"),
+      communityTip: rows.rows.filter(
+        (r: any) => r.review_type === "community_tip",
+      ),
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
 }

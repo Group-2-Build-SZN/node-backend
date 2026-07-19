@@ -1,4 +1,5 @@
 import reviewService from "@/services/review.service";
+import { GetReviewsQuery } from "@/validations/review.validation";
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
@@ -16,8 +17,13 @@ class ReviewController {
 
   static async getPropertyReviews(req: Request, res: Response) {
     const propertyId = req.params.propertyId as string;
-    const data = await reviewService.getPropertyReviews(propertyId);
-    return res.status(StatusCodes.OK).json({ success: true, data });
+    const { page, limit } = req.validatedQuery as GetReviewsQuery;
+    const data = await reviewService.getPropertyReviews(
+      propertyId,
+      page,
+      limit,
+    );
+    return res.status(StatusCodes.OK).json({ success: true, ...data });
   }
 }
 

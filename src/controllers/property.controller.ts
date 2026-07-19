@@ -11,14 +11,25 @@ class PropertyController {
   }
 
   static async getProperties(req: Request, res: Response) {
-    const data = await propertyService.getProperties(
+    const requestingUserId = req.user?.id;
+    const result = await propertyService.getProperties(
       req.validatedQuery as GetPropertiesQuery,
+      requestingUserId,
+    );
+    return res.status(StatusCodes.OK).json({ success: true, ...result });
+  }
+
+  static async getPropertyById(req: Request, res: Response) {
+    const requestingUserId = req.user?.id;
+    const data = await propertyService.getPropertyById(
+      req.params.id as string,
+      requestingUserId,
     );
     return res.status(StatusCodes.OK).json({ success: true, data });
   }
 
-  static async getPropertyById(req: Request, res: Response) {
-    const data = await propertyService.getPropertyById(req.params.id as string);
+  static async getRecommendedProperties(req: Request, res: Response) {
+    const data = await propertyService.getRecommendedProperties();
     return res.status(StatusCodes.OK).json({ success: true, data });
   }
 
@@ -47,6 +58,22 @@ class PropertyController {
     return res
       .status(StatusCodes.OK)
       .json({ success: true, message: "Property deleted successfully" });
+  }
+
+  static async addMedia(req: Request, res: Response) {
+    const ownerId = req.user!.id;
+    const propertyId = req.params.id as string;
+    const files = req.files as {
+      photos?: Express.Multer.File[];
+      videos?: Express.Multer.File[];
+    };
+    const data = await propertyService.addMedia(
+      ownerId,
+      propertyId,
+      files.photos ?? [],
+      files.videos ?? [],
+    );
+    return res.status(StatusCodes.OK).json({ success: true, data });
   }
 }
 

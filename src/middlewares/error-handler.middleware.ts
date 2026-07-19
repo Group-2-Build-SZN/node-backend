@@ -1,4 +1,5 @@
 import { env } from "@/config/env.config";
+import { logger } from "@/config/logger.config";
 import type { CustomError } from "@/types/error.types";
 import type { ErrorRequestHandler } from "express";
 import { getReasonPhrase, StatusCodes } from "http-status-codes";
@@ -45,19 +46,18 @@ const errorHandler: ErrorRequestHandler = (
     },
   };
 
-  if (isProduction) {
-    if (statusCode >= 500) {
-      console.error("[Error]", {
+  if (isProduction && statusCode >= 500) {
+    logger.error(
+      {
+        err,
         path: req.path,
         method: req.method,
         statusCode,
-        message: err.message,
-        timestamp: new Date().toISOString(),
-      });
-    }
-  } else {
-    console.error("[Error]", err);
-    if (cause) console.error("[Postgres cause]", cause);
+      },
+      "Unhandled error",
+    );
+  } else if (!isProduction) {
+    logger.error({ err, cause }, "Request error");
   }
 
   res.status(statusCode).json(errorResponse);

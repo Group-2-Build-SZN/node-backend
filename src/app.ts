@@ -1,12 +1,27 @@
 import router from "@/routes";
 import errorHandler from "@/middlewares/error-handler.middleware";
 import AppError from "@/errors/AppError";
+import { setupSwagger } from "@/config/swagger.config";
+import { corsMiddleware } from "@/middlewares/credentials.middleware";
+
+import { logger } from "@/config/logger.config";
 import express from "express";
+import helmet from "helmet";
+import pinoHttp from "pino-http";
 import { StatusCodes } from "http-status-codes";
 import cookieParser from "cookie-parser";
+import { apiRateLimiter } from "@/middlewares/rate-limiter.middleware";
 
 export function createApp() {
   const app = express();
+
+  app.set("trust proxy", 1);
+
+  app.use(helmet());
+  app.use(corsMiddleware);
+  app.use(pinoHttp({ logger }));
+  app.use(apiRateLimiter);
+  app.use(cookieParser());
 
   app.use(
     express.json({
@@ -15,6 +30,7 @@ export function createApp() {
       },
     }),
   );
+
   app.use(express.urlencoded({ extended: true }));
 
   app.use(cookieParser());
@@ -24,6 +40,7 @@ export function createApp() {
   });
 
   app.use("/api/v1", router);
+  setupSwagger(app);
 
   app.use((req, _res, next) => {
     next(
