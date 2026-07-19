@@ -10,9 +10,7 @@ import authRoutes from "@/routes/auth.routes";
 import referralRoutes from "@/routes/referral.routes";
 import savedFilterRoutes from "@/routes/saved-filter.routes";
 import userRoutes from "@/routes/user.routes";
-
 const router = Router();
-
 
 router.use("/auth", authRoutes);
 router.use("/kyc", kycRoutes);
