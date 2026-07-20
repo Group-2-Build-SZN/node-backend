@@ -1,122 +1,113 @@
-import { Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
 import authService from "@/services/auth.service";
 import { env } from "@/config/env.config";
+import { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
 
 const REFRESH_COOKIE_OPTIONS = {
-    httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: "lax" as const,
-    maxAge: 30 * 24 * 60 * 60 * 1000,
-    path: "/",
+  httpOnly: true,
+  secure: env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  maxAge: 30 * 24 * 60 * 60 * 1000,
 };
 
 function getRequestMeta(req: Request) {
-    return {
-        userAgent: req.headers["user-agent"],
-        ip: req.ip,
-    };
+  return {
+    userAgent: req.headers["user-agent"],
+    ip: req.ip,
+  };
 }
 
 class AuthController {
-    static async googleSignIn(req: Request, res: Response) {
-        const { idToken } = req.body;
+  static async requestCode(req: Request, res: Response) {
+    const data = await authService.requestCode(req.body);
 
-        const meta = getRequestMeta(req);
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      data,
+    });
+  }
 
-        const result = await authService.googleSignIn(idToken, meta);
+  static async verifyCode(req: Request, res: Response) {
+    const { user, accessToken, refreshToken } = await authService.verifyCode(
+      req.body,
+      getRequestMeta(req),
+    );
 
-        res.cookie("refreshToken", result.refreshToken, REFRESH_COOKIE_OPTIONS);
+    res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_OPTIONS);
 
-        return res.status(StatusCodes.OK).json({
-            success: true,
-            data: {
-                user: result.user,
-                accessToken: result.accessToken,
-                isProfileComplete: result.isProfileComplete,
-            },
-        });
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      data: {
+        user,
+        accessToken,
+      },
+    });
+  }
+
+  static async googleSignIn(req: Request, res: Response) {
+    const { user, accessToken, refreshToken } = await authService.googleSignIn(
+      req.body,
+      getRequestMeta(req),
+    );
+
+    res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_OPTIONS);
+
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      data: {
+        user,
+        accessToken,
+      },
+    });
+  }
+
+  static async completeProfile(req: Request, res: Response) {
+    const userId = req.user!.id;
+
+    const data = await authService.completeProfile(userId, req.body);
+
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      data,
+    });
+  }
+
+  static async refresh(req: Request, res: Response) {
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!refreshToken) {
+      return res
+        .status(StatusCodes.UNAUTHORIZED)
+        .json({ success: false, message: "No refresh token" });
     }
 
-    static async requestCode(req: Request, res: Response) {
-        const { email } = req.body;
+    const { accessToken, refreshToken: newRefreshToken } =
+      await authService.refresh(refreshToken, getRequestMeta(req));
 
-        const result = await authService.requestCode(email);
+    res.cookie("refreshToken", newRefreshToken, REFRESH_COOKIE_OPTIONS);
 
-        return res.status(StatusCodes.OK).json({
-            success: true,
-            data: result,
-        });
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      data: {
+        accessToken,
+      },
+    });
+  }
+
+  static async logout(req: Request, res: Response) {
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (refreshToken) {
+      await authService.logout(refreshToken);
     }
 
-    static async verifyCode(req: Request, res: Response) {
-        const { email, code } = req.body;
+    res.clearCookie("refreshToken", REFRESH_COOKIE_OPTIONS);
 
-        const meta = getRequestMeta(req);
-
-        const result = await authService.verifyCode(email, code, meta);
-
-        res.cookie("refreshToken", result.refreshToken, REFRESH_COOKIE_OPTIONS);
-
-        return res.status(StatusCodes.OK).json({
-            success: true,
-            data: {
-                user: result.user,
-                accessToken: result.accessToken,
-            },
-        });
-    }
-
-    static async refresh(req: Request, res: Response) {
-        const refreshToken = req.cookies.refreshToken;
-
-        const meta = getRequestMeta(req);
-
-        const result = await authService.refresh(refreshToken, meta);
-
-        res.cookie("refreshToken", result.refreshToken, REFRESH_COOKIE_OPTIONS);
-
-        return res.status(StatusCodes.OK).json({
-            success: true,
-            data: {
-                accessToken: result.accessToken,
-            },
-        });
-    }
-
-    static async logout(req: Request, res: Response) {
-        const refreshToken = req.cookies.refreshToken;
-
-        await authService.logout(refreshToken);
-
-        res.clearCookie("refreshToken", {
-            httpOnly: true,
-            secure: env.NODE_ENV === "production",
-            sameSite: "lax",
-            path: "/",
-        });
-
-        return res.status(StatusCodes.OK).json({
-            success: true,
-            message: "Logged out successfully.",
-        });
-    }
-
-
-    static async completeProfile(req: Request, res: Response) {
-        const result = await authService.completeProfile(
-            req.user!.id,
-            req.body,
-        );
-
-        return res.status(StatusCodes.OK).json({
-            success: true,
-            data: {
-                user: result,
-            },
-        });
-    }
-
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Logged out successfully.",
+    });
+  }
 }
 
 export default AuthController;

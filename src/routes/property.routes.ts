@@ -12,6 +12,7 @@ import { submitReportSchema } from "@/validations/property-report.validation";
 import {
   authenticate,
   authorize,
+  attachUserIfPresent,
 } from "@/middlewares/authentication.middleware";
 
 import { UserRole } from "@/constants/user-role";
@@ -28,11 +29,12 @@ const router = Router();
 // public
 router.get(
   "/",
+  attachUserIfPresent,
   validateSchema(getPropertiesQuerySchema, "query"),
   PropertyController.getProperties,
 );
 router.get("/recommended", PropertyController.getRecommendedProperties);
-router.get("/:id", PropertyController.getPropertyById);
+router.get("/:id", attachUserIfPresent, PropertyController.getPropertyById);
 router.post("/:id/save", authenticate, SavedPropertyController.saveProperty);
 router.post(
   "/:id/inquiries",

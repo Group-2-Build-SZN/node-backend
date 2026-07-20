@@ -10,9 +10,8 @@ export function generateOpenApiDocument() {
     info: {
       title: "My Ulo API",
       version: "1.0.0",
-      description:
-        "Backend API for My Ulo — verified rental and purchase properties in Nigeria.",
+      description: "Backend API for My Ulo.",
     },
-    servers: [{ url: "/api/v1" }],
+    servers: [{ url: "http://localhost:5000/api/v1" }],
   });
 }

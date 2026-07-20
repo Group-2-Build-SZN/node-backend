@@ -1,120 +1,59 @@
-// temporary
-import type { NextFunction, Request, Response } from "express";
+import { verifyAccessToken } from "@/utils/jwt.utils";
 import { UserRole } from "@/constants/user-role";
-// import { TEST_USER_ID } from "@/constants/seed";
-import { verifyAccessToken } from "@/utils/jwt";
-import { db } from "@/config/database.config";
-import { users } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import type { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
 function extractToken(req: Request): string | null {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader?.startsWith("Bearer ")) {
-    return null;
-  }
-
-  return authHeader.split(" ")[1] ?? null;
+  const authheader = req.headers.authorization;
+  if (authheader?.startsWith("Bearer ")) return authheader.slice(7);
+  return null;
 }
 
-export const authenticate = async (
+export const authenticate = (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
+  const token = extractToken(req);
+
+  if (!token) {
+    return res
+      .status(StatusCodes.UNAUTHORIZED)
+      .json({ success: false, message: "Authentication required" });
+  }
+
   try {
-    const token = extractToken(req);
-
-    if (!token) {
-      return res.status(StatusCodes.UNAUTHORIZED).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    const payload = verifyAccessToken(token);
-
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, payload.id))
-      .limit(1);
-
-    if (!user) {
-      return res.status(StatusCodes.UNAUTHORIZED).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    if (user.isBlacklisted) {
-      return res.status(StatusCodes.FORBIDDEN).json({
-        success: false,
-        message: "Your account has been blacklisted.",
-      });
-    }
-
-    req.user = {
-      id: user.id,
-      email: user.email,
-      role: user.role as UserRole,
-    };
-
+    req.user = verifyAccessToken(token);
     next();
   } catch {
-    return res.status(StatusCodes.UNAUTHORIZED).json({
-      success: false,
-      message: "Invalid token.",
-    });
+    return res
+      .status(StatusCodes.UNAUTHORIZED)
+      .json({ success: false, message: "Invalid or expired token" });
   }
 };
 
-export const attachUserIfPresent = async (
+export const attachUserIfPresent = (
   req: Request,
   _res: Response,
   next: NextFunction,
 ) => {
+  const token = extractToken(req);
+  if (!token) return next();
+
   try {
-    const token = extractToken(req);
-
-    if (!token) {
-      return next();
-    }
-
-    const payload = verifyAccessToken(token);
-
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, payload.id))
-      .limit(1);
-
-    if (user && !user.isBlacklisted) {
-      req.user = {
-        id: user.id,
-        email: user.email,
-        role: user.role as UserRole,
-      };
-    }
-
-    next();
+    req.user = verifyAccessToken(token);
   } catch {
-    next();
+    // invalid/expired token on a public route — proceed as anonymous rather than rejecting
   }
+  next();
 };
 
 export const authorize = (...roles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (
-      !req.user ||
-      req.user.role === null ||
-      !roles.includes(req.user.role)
-    ) {
-      return res.status(StatusCodes.FORBIDDEN).json({
-        success: false,
-        message: "Forbidden",
-      });
+    if (!req.user?.role || !roles.includes(req.user.role)) {
+      return res
+        .status(StatusCodes.FORBIDDEN)
+        .json({ success: false, message: "Forbidden" });
     }
     next();
   };

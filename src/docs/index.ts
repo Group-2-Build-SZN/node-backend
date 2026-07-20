@@ -1,3 +1,4 @@
+import "@/docs/auth.doc";
 import "@/docs/property.doc";
 import "@/docs/review.doc";
 import "@/docs/amenity.doc";
@@ -8,4 +9,5 @@ import "@/docs/saved-property.doc";
 import "@/docs/saved-filter.doc";
 import "@/docs/inquiry.doc";
 import "@/docs/user.doc";
+import "@/docs/admin.doc";
 import "@/docs/property-report.doc";

@@ -123,6 +123,10 @@ export function setupSwagger(app: Express) {
     `,
   };
 
+  app.get("/api/v1/docs.json", (_req, res) => {
+    res.json(document);
+  });
+
   app.use(
     "/api/v1/docs",
     swaggerUi.serve,

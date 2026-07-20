@@ -1,51 +1,45 @@
-import { Router } from "express";
 import AuthController from "@/controllers/auth.controller";
-import { validateSchema } from "@/middlewares/validation.middleware";
 import { authenticate } from "@/middlewares/authentication.middleware";
+import { validateSchema } from "@/middlewares/validation.middleware";
 import { authRateLimiter } from "@/middlewares/rate-limiter.middleware";
 import {
-    requestCodeSchema,
-    verifyCodeSchema,
-    completeProfileSchema,
-    googleSignInSchema
+  requestCodeSchema,
+  verifyCodeSchema,
+  googleSignInSchema,
+  completeProfileSchema,
 } from "@/validations/auth.validation";
+import { Router } from "express";
 
 const router = Router();
 
 router.post(
-    "/google",
-    validateSchema(googleSignInSchema),
-    AuthController.googleSignIn,
+  "/request-code",
+  authRateLimiter,
+  validateSchema(requestCodeSchema, "body"),
+  AuthController.requestCode,
 );
 
 router.post(
-    "/request-code",
-    authRateLimiter,
-    validateSchema(requestCodeSchema),
-    AuthController.requestCode,
+  "/verify-code",
+  validateSchema(verifyCodeSchema, "body"),
+  AuthController.verifyCode,
 );
 
 router.post(
-    "/verify-code",
-    validateSchema(verifyCodeSchema, "body"),
-    AuthController.verifyCode,
+  "/google",
+  validateSchema(googleSignInSchema, "body"),
+  AuthController.googleSignIn,
 );
 
 router.patch(
-    "/complete-profile",
-    authenticate,
-    validateSchema(completeProfileSchema),
-    AuthController.completeProfile,
+  "/complete-profile",
+  authenticate,
+  validateSchema(completeProfileSchema, "body"),
+  AuthController.completeProfile,
 );
 
-router.post(
-    "/refresh",
-    AuthController.refresh,
-);
+router.post("/refresh", AuthController.refresh);
 
-router.post(
-    "/logout",
-    AuthController.logout,
-);
+router.post("/logout", AuthController.logout);
 
 export default router;

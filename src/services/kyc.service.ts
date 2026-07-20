@@ -19,6 +19,7 @@ function namesMatch(a: string, b: string) {
 class KycService {
   async submitNinVerification(userId: string, payload: VerifyNinInput) {
     const result = await dojahClient.lookupNin(payload.ninNumber);
+
     const entity = result?.entity;
 
     let status: VerificationOutcome = "rejected";

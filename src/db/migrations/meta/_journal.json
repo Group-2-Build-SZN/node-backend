@@ -85,6 +85,20 @@
       "when": 1784295201226,
       "tag": "0011_flowery_luke_cage",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1784546212926,
+      "tag": "0012_jazzy_fallen_one",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1784547132690,
+      "tag": "0013_volatile_iron_lad",
+      "breakpoints": true
     }
   ]
 }

@@ -11,6 +11,7 @@ export const userRoleEnum = pgEnum("user_role", [
   "tenant",
   "agent",
   "landlord",
+  "admin",
 ]);
 
 export const verificationTypeEnum = pgEnum("verification_type", ["nin", "cac"]);
