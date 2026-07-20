@@ -6,11 +6,13 @@ import inquiryRoutes from "@/routes/inquiry.routes";
 import reviewRoutes from "@/routes/review.routes";
 import amenityRoutes from "@/routes/amenity.routes";
 import paymentRoutes from "@/routes/payment.routes";
+import authRoutes from "@/routes/auth.routes";
 import referralRoutes from "@/routes/referral.routes";
 import savedFilterRoutes from "@/routes/saved-filter.routes";
 import userRoutes from "@/routes/user.routes";
 const router = Router();
 
+router.use("/auth", authRoutes);
 router.use("/kyc", kycRoutes);
 router.use("/saved", savedPropertyRoutes);
 router.use("/inquiries", inquiryRoutes);

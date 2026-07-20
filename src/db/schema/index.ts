@@ -5,6 +5,7 @@ export * from "@/db/schema/property-reports.schema";
 export * from "@/db/schema/inquiries.schema";
 export * from "@/db/schema/reviews.schema";
 export * from "@/db/schema/amenities.schema";
+export * from "@/db/schema/refresh-token.schema";
 export * from "@/db/schema/saved-properties.schema";
 export * from "@/db/schema/property-views.schema";
 export * from "@/db/schema/payment-transactions.schema";
