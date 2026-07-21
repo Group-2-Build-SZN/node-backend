@@ -19,21 +19,13 @@ class DojahClient {
     return response.json();
   }
 
-  /**
-   * Resolve Corporate Affairs Commission (CAC) Registration
-   * Allowed values: "BUSINESS_NAME", "COMPANY", "INCORPORATED_TRUSTEES", etc.
-   */
-  async lookupCac(
-    rcNumber: string,
-    companyType:
-      "BUSINESS_NAME" | "COMPANY" | "INCORPORATED_TRUSTEES" = "COMPANY",
-  ) {
-    // Exact param verified against Dojah: "rc_number" and "company_type" are both required
-    const url = `${env.DOJAH_BASE_URL}/api/v1/kyc/cac?rc_number=${rcNumber}&company_type=${companyType}`;
-
-    const response = await fetch(url, {
-      headers: this.headers,
-    });
+  async lookupCac(rcNumber: string) {
+    const response = await fetch(
+      `${env.DOJAH_BASE_URL}/api/v1/kyc/cac/basic?rc_number=${rcNumber}`,
+      {
+        headers: this.headers,
+      },
+    );
     return response.json();
   }
 }

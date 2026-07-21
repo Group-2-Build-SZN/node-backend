@@ -4,9 +4,14 @@ import { amenities } from "@/db/schema/amenities.schema";
 import { properties } from "@/db/schema/property.schema";
 import { reviews } from "@/db/schema/reviews.schema";
 import { eq } from "drizzle-orm";
-import { TEST_USER_ID } from "@/constants/seed";
+import { TEST_USER_ID } from "@/constants/seed-dev";
+import { env } from "@/config/env.config";
 
 async function seed() {
+  if (env.NODE_ENV === "production") {
+    console.error("Refusig to run script in production");
+    process.exit(1);
+  }
   console.log("Seeding...");
 
   // Delete records in reverse dependency order to prevent foreign key constraint violations

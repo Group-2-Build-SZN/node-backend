@@ -125,7 +125,7 @@ _Users_
 - DELETE /users/me
 - GET /users/:id/profile — public agent/landlord profile
 
-_Auth_ (in progress)
+_Auth_
 
 - POST /auth/request-code
 - POST /auth/verify-code
@@ -133,6 +133,14 @@ _Auth_ (in progress)
 - PATCH /auth/complete-profile
 - POST /auth/refresh
 - POST /auth/logout
+
+_Admin_(requires admin role - bootstrapped manually, no self-registration)
+
+- GET /admin/reports
+- PATCH /admin/properties/:id/status
+- GET /admin/kyc/:id/resolve
+- PATCH /admin/kyc/:id/resolve
+- PATCH /admin/users/:id/blacklist - also revokes all active sessions for that user
 
 ---
 
@@ -362,3 +370,15 @@ Whenever a new environment variable is introduced:
 2. Update `.env.example`
 3. Never commit secrets
 4. Verify all required keys are documented
+
+---
+
+# Auth Notes
+
+Authentication is complete: passwordless email OTP, Google Sign-In, and JWT access tokens paired with **DB-backed, rotating refresh tokens** (`refresh_tokens` table) — not stateless JWT refresh tokens. Key behaviors worth knowing:
+
+- Refresh tokens are opaque random strings, stored hashed (SHA-256) in the database, and **rotated on every use** — the old one is revoked the moment a new one is issued, so a stolen-but-unused refresh token becomes worthless as soon as the real owner refreshes again.
+
+- `authenticate` (strict) vs. `attachUserIfPresent` (soft, doesn't reject unauthenticated requests) are both implemented — used on public-but-auth-aware routes like `GET /properties`.
+
+- Blacklisted users are rejected at login/refresh time. Admin blacklisting also calls `revokeAllSessions()` to immediately kill a user's ability to refresh, without waiting for their short-lived (15 min) access token to expire naturally.

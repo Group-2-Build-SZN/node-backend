@@ -30,7 +30,7 @@ class KycService {
         payload.firstName,
       );
       const lastNameMatch = namesMatch(
-        entity.last_name ?? entity.surname ?? "",
+        entity.last_name ?? "",
         payload.lastName,
       );
       status = firstNameMatch && lastNameMatch ? "verified" : "review_needed";
@@ -53,13 +53,14 @@ class KycService {
 
   async submitCacVerification(userId: string, payload: VerifyCacInput) {
     const result = await dojahClient.lookupCac(payload.rcNumber);
+
     const entity = result?.entity;
 
     let status: VerificationOutcome = "rejected";
 
     if (entity) {
       const nameMatch = namesMatch(
-        entity.business_name ?? entity.company_name ?? "",
+        entity.company_name ?? "",
         payload.companyName,
       );
       status = nameMatch ? "verified" : "review_needed";
