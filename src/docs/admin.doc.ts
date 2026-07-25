@@ -3,17 +3,45 @@ import {
   updatePropertyStatusSchema,
   resolveKycSchema,
   blacklistUserSchema,
+  updateReportStatusSchema,
 } from "@/validations/admin.validation";
+import { z } from "@/lib/zod";
 
 registry.registerPath({
   method: "get",
   path: "/admin/reports",
-  summary: "List all property reports (admin only)",
+  summary:
+    "List all property reports, optionally filtered by status (admin only)",
   tags: ["Admin"],
   security: [{ bearerAuth: [] }],
+  request: {
+    query: z.object({
+      propertyId: z.string().uuid().optional(),
+      status: z
+        .enum(["open", "under_review", "resolved", "dismissed"])
+        .optional(),
+    }),
+  },
   responses: {
     200: { description: "List of reports" },
     403: { description: "Not an admin" },
+  },
+});
+
+registry.registerPath({
+  method: "patch",
+  path: "/admin/reports/{id}/status",
+  summary: "Update a report's moderation status (admin only)",
+  tags: ["Admin"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: { "application/json": { schema: updateReportStatusSchema } },
+    },
+  },
+  responses: {
+    200: { description: "Report status updated" },
+    404: { description: "Report not found" },
   },
 });
 
@@ -57,7 +85,7 @@ registry.registerPath({
   method: "patch",
   path: "/admin/users/{id}/blacklist",
   summary:
-    "Set a user's blacklist status (admin only) \u2014 revokes all active sessions when blacklisting",
+    "Set a user's blacklist status (admin only) — revokes all active sessions and unpublishes all their listings when blacklisting",
   tags: ["Admin"],
   security: [{ bearerAuth: [] }],
   request: {

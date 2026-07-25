@@ -16,5 +16,15 @@ export const getReviewsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).optional().default(20),
 });
 
+export const updateReviewSchema = z.object({
+  waterRating: z.coerce.number().int().min(1).max(5).optional(),
+  electricityRating: z.coerce.number().int().min(1).max(5).optional(),
+  securityRating: z.coerce.number().int().min(1).max(5).optional(),
+  roadAccessibilityRating: z.coerce.number().int().min(1).max(5).optional(),
+  cleanlinessRating: z.coerce.number().int().min(1).max(5).optional(),
+  reviewText: z.string().trim().max(1000).optional(),
+});
+
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
 export type GetReviewsQuery = z.infer<typeof getReviewsQuerySchema>;
+export type UpdateReviewInput = z.infer<typeof updateReviewSchema>;

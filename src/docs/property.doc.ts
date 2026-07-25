@@ -73,12 +73,14 @@ registry.registerPath({
 registry.registerPath({
   method: "patch",
   path: "/properties/{id}/publish",
-  summary: "Publish a property listing — requires owner's KYC to be verified",
+  summary:
+    "Publish a property listing — requires owner's KYC to be verified, plus atleast one photo and one video",
   tags: ["Properties"],
   security: [{ bearerAuth: [] }],
   request: { params: propertyIdSchema },
   responses: {
     200: { description: "Property published" },
+    400: { description: "Missing required photo/video before publishing" },
     403: { description: "Owner not KYC-verified" },
     404: { description: "Not found or not owned by you" },
   },

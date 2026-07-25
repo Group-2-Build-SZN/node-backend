@@ -49,3 +49,27 @@ export async function authRateLimiter(
     });
   }
 }
+
+const contactLimiter = new RateLimiterMemory({
+  points: 3,
+  duration: 60 * 60, // 3 messages per hour per IP
+});
+
+export async function contactRateLimiter(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    await contactLimiter.consume(req.ip ?? "unknown");
+    next();
+  } catch {
+    res.status(StatusCodes.TOO_MANY_REQUESTS).json({
+      success: false,
+      error: {
+        message: "Too many messages sent. Please try again later.",
+        code: "RATE_LIMITED",
+      },
+    });
+  }
+}

@@ -11,6 +11,8 @@ import referralRoutes from "@/routes/referral.routes";
 import savedFilterRoutes from "@/routes/saved-filter.routes";
 import userRoutes from "@/routes/user.routes";
 import adminRoutes from "@/routes/admin.routes";
+import contactRoutes from "@/routes/contact.routes";
+
 const router = Router();
 
 router.use("/admin", adminRoutes);
@@ -25,4 +27,6 @@ router.use("/payments", paymentRoutes);
 router.use("/referrals", referralRoutes);
 router.use("/saved-filters", savedFilterRoutes);
 router.use("/users", userRoutes);
+router.use("/contact", contactRoutes);
+
 export default router;

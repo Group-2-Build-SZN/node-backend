@@ -32,6 +32,21 @@ class EmailService {
       html,
     });
   }
+
+  async sendContactNotification(payload: {
+    fullName: string;
+    email: string;
+    subject: string;
+    message: string;
+  }) {
+    await transporter.sendMail({
+      from: `"My Ulo Website" <${env.EMAIL_USER}>`,
+      to: env.SUPPORT_EMAIL,
+      replyTo: payload.email,
+      subject: `[Contact Form] ${payload.subject} - from ${payload.fullName}`,
+      text: `From: ${payload.fullName} (${payload.email})\nSubject: ${payload.subject}\n\n${payload.message}`,
+    });
+  }
 }
 
 export default new EmailService();

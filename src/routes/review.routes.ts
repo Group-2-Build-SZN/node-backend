@@ -3,7 +3,8 @@ import { authenticate } from "@/middlewares/authentication.middleware";
 import { validateSchema } from "@/middlewares/validation.middleware";
 import {
   createReviewSchema,
-  getReviewsQuerySchenma,
+  getReviewsQuerySchema,
+  updateReviewSchema,
 } from "@/validations/review.validation";
 import { reviewPhotoUpload } from "@/middlewares/upload.middleware";
 import { Router } from "express";
@@ -12,7 +13,7 @@ const router = Router({ mergeParams: true });
 
 router.get(
   "/",
-  validateSchema(getReviewsQuerySchenma, "query"),
+  validateSchema(getReviewsQuerySchema, "query"),
   ReviewController.getPropertyReviews,
 );
 
@@ -29,5 +30,13 @@ router.post(
   validateSchema(createReviewSchema, "body"),
   ReviewController.submitReview,
 );
+
+router.patch(
+  "/:reviewId",
+  authenticate,
+  validateSchema(updateReviewSchema, "body"),
+  ReviewController.updateReview,
+);
+router.delete("/:reviewId", authenticate, ReviewController.deleteReview);
 
 export default router;

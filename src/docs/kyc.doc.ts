@@ -14,6 +14,7 @@ registry.registerPath({
     201: {
       description: "Verification result: verified, review_needed, or rejected",
     },
+    403: { description: "This NIN is associated with a blacklisted account" },
   },
 });
 
@@ -29,6 +30,9 @@ registry.registerPath({
   responses: {
     201: {
       description: "Verification result: verified, review_needed, or rejected",
+    },
+    403: {
+      description: "This RC number is associated with a blacklisted account",
     },
   },
 });

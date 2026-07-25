@@ -38,6 +38,8 @@ const envSchema = z.object({
 
   GOOGLE_CLIENT_ID: z.string().min(1, "GOOGLE_CLIENT_ID is required"),
 
+  SUPPORT_EMAIL: z.string().email(),
+
   ALLOWED_ORIGINS: z
     .string()
     .default("http://localhost:3000,http://localhost:5173"),

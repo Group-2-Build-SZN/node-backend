@@ -11,3 +11,4 @@ export * from "@/db/schema/property-views.schema";
 export * from "@/db/schema/payment-transactions.schema";
 export * from "@/db/schema/referrals.schema";
 export * from "@/db/schema/saved-filters.schema";
+export * from "@/db/schema/contact-messages.schema";

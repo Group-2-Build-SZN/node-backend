@@ -35,6 +35,7 @@ export const reviews = pgTable("reviews", {
   submittedLng: doublePrecision("submitted_lng").notNull(),
   distanceFromPropertyMetres: doublePrecision("distance_from_property_metres"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export type Review = typeof reviews.$inferSelect;

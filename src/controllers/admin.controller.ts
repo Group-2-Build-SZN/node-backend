@@ -5,7 +5,14 @@ import { StatusCodes } from "http-status-codes";
 class AdminController {
   static async listReports(req: Request, res: Response) {
     const propertyId = req.query.propertyId as string | undefined;
-    const data = await adminService.listReports(propertyId);
+    const status = req.query.propertyId as string | undefined;
+    const data = await adminService.listReports(propertyId, status);
+    return res.status(StatusCodes.OK).json({ success: true, data });
+  }
+
+  static async updateReportStatus(req: Request, res: Response) {
+    const reportId = req.params.id as string;
+    const data = await adminService.updateReportStatus(reportId, req.body);
     return res.status(StatusCodes.OK).json({ success: true, data });
   }
 

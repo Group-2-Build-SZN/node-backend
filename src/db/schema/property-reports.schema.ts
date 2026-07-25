@@ -11,6 +11,13 @@ export const reportReasonEnum = pgEnum("report_reason", [
   "other",
 ]);
 
+export const reportStatusEnum = pgEnum("report_status", [
+  "open",
+  "under_review",
+  "resolved",
+  "dismissed",
+]);
+
 export const propertyReports = pgTable("property_reports", {
   id: uuid("id").defaultRandom().primaryKey(),
   referenceId: text("reference_id").notNull().unique(),
@@ -23,6 +30,7 @@ export const propertyReports = pgTable("property_reports", {
   reason: reportReasonEnum("reason").notNull(),
   description: text("description"),
   evidenceUrls: text("evidence_urls").array(),
+  status: reportStatusEnum("status").notNull().default("open"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -25,6 +25,26 @@ class ReviewController {
     );
     return res.status(StatusCodes.OK).json({ success: true, ...data });
   }
+
+  static async updateReview(req: Request, res: Response) {
+    const reviewerId = req.user!.id;
+    const reviewId = req.params.reviewId as string;
+    const data = await reviewService.updateReview(
+      reviewerId,
+      reviewId,
+      req.body,
+    );
+    return res.status(StatusCodes.OK).json({ success: true, data });
+  }
+
+  static async deleteReview(req: Request, res: Response) {
+    const reviewerId = req.user!.id;
+    const reviewId = req.params.reviewId as string;
+    await reviewService.deleteReview(reviewerId, reviewId);
+    return res
+      .status(StatusCodes.OK)
+      .json({ success: true, message: "Review deleted" });
+  }
 }
 
 export default ReviewController;

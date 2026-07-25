@@ -300,6 +300,26 @@ class PropertyService {
   }
 
   async publishProperty(ownerId: string, id: string) {
+    const [property] = await db
+      .select()
+      .from(properties)
+      .where(and(eq(properties.id, id), eq(properties.ownerId, ownerId)));
+
+    if (!property) {
+      throw AppError(
+        "Property not found or not owned by you",
+        StatusCodes.NOT_FOUND,
+        ErrorCode.RESOURCE_NOT_FOUND,
+      );
+    }
+
+    if (!property.photoUrls?.length || !property.videoUrls?.length) {
+      throw AppError(
+        "At least one photo and one video are required before publishing",
+        StatusCodes.BAD_REQUEST,
+        ErrorCode.INVALID_INPUT,
+      );
+    }
     const [verification] = await db
       .select()
       .from(verifications)
@@ -317,20 +337,13 @@ class PropertyService {
         ErrorCode.FORBIDDEN,
       );
     }
-    const [property] = await db
+    const [published] = await db
       .update(properties)
       .set({ isPublished: true, updatedAt: new Date() })
-      .where(and(eq(properties.id, id), eq(properties.ownerId, ownerId)))
+      .where(eq(properties.id, id))
       .returning();
 
-    if (!property) {
-      throw AppError(
-        "Property not found or not owned by you",
-        StatusCodes.NOT_FOUND,
-        ErrorCode.RESOURCE_NOT_FOUND,
-      );
-    }
-    return property;
+    return published;
   }
 
   async deleteProperty(ownerId: string, id: string) {

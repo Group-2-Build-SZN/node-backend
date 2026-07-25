@@ -1,5 +1,9 @@
 import { z } from "@/lib/zod";
 
+export const updateReportStatusSchema = z.object({
+  status: z.enum(["open", "under_review", "resolved", "dismissed"]),
+});
+
 export const updatePropertyStatusSchema = z.object({
   availabilityStatus: z.enum(["available", "taken", "under_review"]),
 });
@@ -12,6 +16,7 @@ export const blacklistUserSchema = z.object({
   blacklisted: z.boolean(),
 });
 
+export type UpdateReportStatusInput = z.infer<typeof updateReportStatusSchema>;
 export type UpdatePropertyStatusInput = z.infer<
   typeof updatePropertyStatusSchema
 >;

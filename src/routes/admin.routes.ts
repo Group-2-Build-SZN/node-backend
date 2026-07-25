@@ -6,6 +6,7 @@ import {
 import { validateSchema } from "@/middlewares/validation.middleware";
 import { UserRole } from "@/constants/user-role";
 import {
+  updateReportStatusSchema,
   updatePropertyStatusSchema,
   resolveKycSchema,
   blacklistUserSchema,
@@ -21,6 +22,11 @@ router.patch(
   "/properties/:id/status",
   validateSchema(updatePropertyStatusSchema, "body"),
   AdminController.updatePropertyStatus,
+);
+router.patch(
+  "/reports/:id/status",
+  validateSchema(updateReportStatusSchema, "body"),
+  AdminController.updateReportStatus,
 );
 router.get("/kyc/review-needed", AdminController.listKycReviewNeeded);
 router.patch(

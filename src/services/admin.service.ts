@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { db } from "@/config/database.config";
 import { properties } from "@/db/schema/property.schema";
 import { propertyReports } from "@/db/schema/property-reports.schema";
@@ -8,20 +8,40 @@ import AppError from "@/errors/AppError";
 import { ErrorCode } from "@/constants/error-code";
 import { StatusCodes } from "http-status-codes";
 import type {
+  UpdateReportStatusInput,
   UpdatePropertyStatusInput,
   ResolveKycInput,
   BlacklistUserInput,
 } from "@/validations/admin.validation";
 
 class AdminService {
-  async listReports(propertyId?: string) {
+  async listReports(propertyId?: string, status?: string) {
+    const conditions = [];
+    if (propertyId) conditions.push(eq(propertyReports.propertyId, propertyId));
+    if (status) conditions.push(eq(propertyReports.status, status as any));
+
     const query = db
       .select()
       .from(propertyReports)
       .orderBy(desc(propertyReports.createdAt));
-    return propertyId
-      ? query.where(eq(propertyReports.propertyId, propertyId))
-      : query;
+    return conditions.length > 0 ? query.where(and(...conditions)) : query;
+  }
+
+  async updateReportStatus(reportId: string, payload: UpdateReportStatusInput) {
+    const [report] = await db
+      .update(propertyReports)
+      .set({ status: payload.status })
+      .where(eq(propertyReports.id, reportId))
+      .returning();
+
+    if (!report) {
+      throw AppError(
+        "Report not found",
+        StatusCodes.NOT_FOUND,
+        ErrorCode.RESOURCE_NOT_FOUND,
+      );
+    }
+    return report;
   }
 
   async updatePropertyStatus(
@@ -95,6 +115,10 @@ class AdminService {
 
     if (payload.blacklisted) {
       await authService.revokeAllSessions(userId);
+      await db
+        .update(properties)
+        .set({ isPublished: false, updatedAt: new Date() })
+        .where(eq(properties.ownerId, userId));
     }
 
     return user;
