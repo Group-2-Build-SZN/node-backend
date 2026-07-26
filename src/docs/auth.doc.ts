@@ -12,10 +12,32 @@ registry.registerPath({
   summary: "Request a one-time login code by email",
   tags: ["Auth"],
   request: {
-    body: { content: { "application/json": { schema: requestCodeSchema } } },
+    body: {
+      content: {
+        "application/json": {
+          schema: requestCodeSchema,
+          example: {
+            email: "tenant@gmail.com",
+          },
+        },
+      },
+    },
   },
   responses: {
-    200: { description: "Code sent" },
+    200: {
+      description: "Code sent",
+      content: {
+        "application/json": {
+          schema: { type: "object" },
+          example: {
+            success: true,
+            data: {
+              message: "Verification code sent to your email",
+            },
+          },
+        },
+      },
+    },
     429: { description: "Too many requests" },
   },
 });
@@ -26,11 +48,51 @@ registry.registerPath({
   summary: "Verify a login code and receive tokens",
   tags: ["Auth"],
   request: {
-    body: { content: { "application/json": { schema: verifyCodeSchema } } },
+    body: {
+      content: {
+        "application/json": {
+          schema: verifyCodeSchema,
+          example: {
+            email: "tenant@gmail.com",
+            code: "644421",
+          },
+        },
+      },
+    },
   },
   responses: {
     200: {
       description: "Access token + user; refresh token set as httpOnly cookie",
+      content: {
+        "application/json": {
+          schema: { type: "object" },
+          example: {
+            success: true,
+            data: {
+              user: {
+                id: "7be4fa93-8d56-4bc2-88c5-e95346830679",
+                firstName: null,
+                lastName: null,
+                email: "tenant@gmail.com",
+                phone: null,
+                role: null,
+                googleId: null,
+                avatarUrl: null,
+                referralCode: null,
+                subscriptionCode: null,
+                subscriptionEmailToken: null,
+                isPremium: false,
+                premiumUntil: null,
+                isBlacklisted: false,
+                createdAt: "2026-07-25T15:17:06.926Z",
+                updatedAt: "2026-07-25T15:17:06.926Z",
+              },
+              accessToken:
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjdiZTRmYTkzLThkNTYtNGJjMi04OGM1LWU5NTM0NjgzMDY3OSIsImVtYWlsIjoidGVuYW50QGdtYWlsLmNvbSIsInJvbGUiOm51bGwsImlhdCI6MTc4NDk4OTAyNiwiZXhwIjoxNzg0OTg5OTI2fQ.Bvk4a82KikyvEsOa48b3CJS431d8hAkx052f_50Nz24",
+            },
+          },
+        },
+      },
     },
   },
 });
@@ -58,10 +120,51 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
   request: {
     body: {
-      content: { "application/json": { schema: completeProfileSchema } },
+      content: {
+        "application/json": {
+          schema: completeProfileSchema,
+          example: {
+            firstName: "Jason",
+            lastName: "Kabiru",
+            phone: "08022222222",
+            role: "agent",
+            referralCode: "null",
+          },
+        },
+      },
     },
   },
-  responses: { 200: { description: "Profile updated" } },
+  responses: {
+    200: {
+      description: "Profile updated successfully",
+      content: {
+        "application/json": {
+          schema: { type: "object" },
+          example: {
+            success: true,
+            data: {
+              id: "7be4fa93-8d56-4bc2-88c5-e95346830679",
+              firstName: "Jason",
+              lastName: "Kabiru",
+              email: "tenant@gmail.com",
+              phone: "08022222222",
+              role: "agent",
+              googleId: null,
+              avatarUrl: null,
+              referralCode: null,
+              subscriptionCode: null,
+              subscriptionEmailToken: null,
+              isPremium: false,
+              premiumUntil: null,
+              isBlacklisted: false,
+              createdAt: "2026-07-25T15:17:06.926Z",
+              updatedAt: "2026-07-25T14:58:28.611Z",
+            },
+          },
+        },
+      },
+    },
+  },
 });
 
 registry.registerPath({
