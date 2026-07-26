@@ -1,5 +1,5 @@
 import { randomBytes, createHash } from "node:crypto";
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions } from "jsonwebtoken";
 import { env } from "@/config/env.config";
 import { UserRole } from "@/constants/user-role";
 
@@ -11,7 +11,7 @@ export interface TokenPayload {
 
 export function generateAccessToken(payload: TokenPayload) {
   return jwt.sign(payload, env.JWT_SECRET, {
-    expiresIn: env.JWT_ACCESS_EXPIRY,
+    expiresIn: env.JWT_ACCESS_EXPIRY as SignOptions["expiresIn"],
   });
 }
 

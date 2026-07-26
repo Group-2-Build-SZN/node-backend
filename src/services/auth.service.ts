@@ -4,6 +4,7 @@ import { eq, and, gt, desc } from "drizzle-orm";
 import { OAuth2Client } from "google-auth-library";
 import { db } from "@/config/database.config";
 import { users } from "@/db/schema/users.schema";
+import { UserRole } from "@/constants/user-role";
 import { loginCodes } from "@/db/schema/login-code.schema";
 import { refreshTokens } from "@/db/schema/refresh-token.schema";
 import emailService from "@/services/email.service";
@@ -266,7 +267,11 @@ class AuthService {
     user: typeof users.$inferSelect,
     meta: RequestMeta,
   ) {
-    const payload = { id: user.id, email: user.email, role: user.role };
+    const payload = {
+      id: user.id,
+      email: user.email,
+      role: user.role as UserRole | null,
+    };
     const accessToken = generateAccessToken(payload);
 
     const refreshToken = generateOpaqueRefreshToken();
