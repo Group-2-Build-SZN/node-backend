@@ -85,7 +85,7 @@
     "generate": "drizzle-kit generate",
     "migrate": "drizzle-kit migrate",
     "studio": "drizzle-kit studio",
-    "lint": "eslint .",
+    "lint": "cross-env ESLINT_USE_FLAT_CONFIG=false eslint .",
     "prepare": "husky",
     "test": "vitest run",
     "test:watch": "vitest"
