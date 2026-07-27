@@ -65,7 +65,7 @@ All routes are mounted under /api/v1, plus a root-level health check.
 
 _Properties_
 
-- GET /properties — search/filter/paginate (public, auth-aware for isSaved/contact-gating once available)
+- GET /properties — search/filter/paginate (public; auth-aware for isSaved and view tracking when a valid token is present)
 - GET /properties/recommended
 - GET /properties/:id — includes Trek Check, trust score, owner info (contact gated by premium status), isSaved
 - POST /properties — agent/landlord only
@@ -88,7 +88,9 @@ _Saved Filters_
 _Reviews_
 
 - GET /properties/:propertyId/reviews — public, paginated, split into verifiedResident / communityTip
-- POST /properties/:propertyId/reviews — GPS-gated, photo upload supported
+- POST /properties/:propertyId/reviews — GPS-gated, photo upload supported, limited to once per property per rolling 30-day window
+- PATCH /properties/:propertyId/reviews/:reviewId — edit ratings/text only (GPS/location cannot be changed after submission)
+- DELETE /properties/:propertyId/reviews/:reviewId
 
 _Inquiries_
 
@@ -121,26 +123,27 @@ _Referrals_
 _Users_
 
 - GET /users/me
+- GET /users/me/stats — saved/viewed/inquiries counts for the Profile screen's Account Overview
 - PATCH /users/me/avatar
 - DELETE /users/me
 - GET /users/:id/profile — public agent/landlord profile
 
+_Contact_
+
+- POST /contact — public, rate-limited (3/hour per IP); notifies SUPPORT_EMAIL and stores the message
+
 _Auth_
 
-- POST /auth/request-code
-- POST /auth/verify-code
-- POST /auth/google
-- PATCH /auth/complete-profile
-- POST /auth/refresh
-- POST /auth/logout
+- POST /auth/request-code, POST /auth/verify-code, POST /auth/google, PATCH /auth/complete-profile, POST /auth/refresh, POST /auth/logout
 
-_Admin_(requires admin role - bootstrapped manually, no self-registration)
+_Admin_ (requires admin role — bootstrapped manually, no self-registration)
 
-- GET /admin/reports
+- GET /admin/reports — supports ?status=open|under_review|resolved|dismissed and ?propertyId=
+- PATCH /admin/reports/:id/status
 - PATCH /admin/properties/:id/status
-- GET /admin/kyc/:id/resolve
+- GET /admin/kyc/review-needed
 - PATCH /admin/kyc/:id/resolve
-- PATCH /admin/users/:id/blacklist - also revokes all active sessions for that user
+- PATCH /admin/users/:id/blacklist — also revokes all active sessions and unpublishes all of that user's listings
 
 ---
 
@@ -161,7 +164,9 @@ _Admin_(requires admin role - bootstrapped manually, no self-registration)
 │   │   ├── schema/
 │   │   ├── migrations/
 │   │   ├── index.ts
-│   │   └── seed.ts
+|   |   ├── seed.ts
+|   |   ├── seed-production.ts
+│   │   └── cleanup-dev-seed.ts
 │   ├── docs/
 │   ├── errors/
 │   ├── lib/
@@ -169,6 +174,7 @@ _Admin_(requires admin role - bootstrapped manually, no self-registration)
 │   ├── routes/
 │   ├── services/
 │   ├── templates/
+|   ├── tests/
 │   ├── types/
 │   ├── utils/
 │   └── validations/
@@ -183,7 +189,8 @@ _Admin_(requires admin role - bootstrapped manually, no self-registration)
 ├── README.md
 ├── tsconfig.build.json
 ├── tsconfig.json
-└── tsdownconfig.ts
+├── tsdownconfig.json
+└── vitest.config.ts
 
 ```
 
@@ -207,7 +214,7 @@ _Admin_(requires admin role - bootstrapped manually, no self-registration)
 
 ```bash
 git clone https://github.com/Group-2-Build-SZN/node-backend.git
-cd my-ulo-backend
+cd node-backend
 ```
 
 ## 2. Install dependencies
@@ -236,13 +243,19 @@ CREATE EXTENSION IF NOT EXISTS postgis
 npm run migrate
 ```
 
-## 6. Start the development server
+## 6. Seed reference data
+
+```bash
+npm run seed
+```
+
+## 7. Start the development server
 
 ```bash
 npm run dev
 ```
 
-## 6. Verify the server
+## 8. Verify the server
 
 ```bash
 GET http://localhost:5000/health
@@ -263,7 +276,6 @@ Common variables include:
 | DATABASE_URL              | PostgreSQL connection string        |
 | ALLOWED_ORIGINS           | Comma-separated list                |
 | JWT_SECRET                | JWT signing secret                  |
-| JWT_REFRESH_SECRET        | Refresh token secret                |
 | CLOUDINARY_CLOUD_NAME     | Cloudinary configuration            |
 | CLOUDINARY_API_KEY        | Cloudinary configuration            |
 | CLOUDINARY_API_SECRET     | Cloudinary configuration            |
@@ -276,6 +288,7 @@ Common variables include:
 | OTP_EXPIRY_MINUTES        | Login code expiry window            |
 | OTP_CODE_LENGTH           | Digits in the emailed login code    |
 | GOOGLE_CLIENT_ID          | Google Sign-In token verification   |
+| SUPPORT_EMAIL             | Address that receives `/contact`    |
 
 Never commit your `.env` file.
 
@@ -283,18 +296,23 @@ Never commit your `.env` file.
 
 # Available Scripts
 
-| Script             | Description                 |
-| ------------------ | --------------------------- |
-| npm run dev        | Start development server    |
-| npm run build      | Build the application       |
-| npm start          | Run production build        |
-| npm run type-check | Run TypeScript checks       |
-| npm run lint       | Run linting                 |
-| npm run format     | Format source files         |
-| npm run generate   | Generate Drizzle migrations |
-| npm run migrate    | Run database migrations     |
-| npm run seed       | Seed the database           |
-| npm run prepare    | Install Git hooks           |
+| Script                      | Description                                                                                                                      |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| npm run dev                 | Start development server                                                                                                         |
+| npm run build               | Build the application                                                                                                            |
+| npm start                   | Run production build                                                                                                             |
+| npm run type-check          | Run TypeScript checks                                                                                                            |
+| npm run lint                | Run linting                                                                                                                      |
+| npm run format              | Format source files                                                                                                              |
+| npm run generate            | Generate Drizzle migrations                                                                                                      |
+| npm run migrate             | Run database migrations                                                                                                          |
+| npm run seed                | Seed the database with reference/test data (refuses to run if NODE_ENV=production)                                               |
+| npm run seed-production     | Seed a small set of richer demo listings/reviews into whatever DATABASE_URL points at; requires SEED_CONFIRM=yes-seed-production |
+| npm run cleanup-dev-seed    | removes the dummy seed.ts test data from whatever DATABASE_URL points at; also requires SEED_CONFIRM=yes-seed-production         |
+| npx tsx scripts/reset-db.ts | Drop all tables/types in dev — clean slate before re-migrating (refuses to run if NODE_ENV=production)                           |
+| npm run test                | Run the automated test suite (Vitest + Supertest) against the test database                                                      |
+| npm run test:watch          | Run tests in watch mode during development                                                                                       |
+| npm run prepare             | Install Git hooks                                                                                                                |
 
 ---
 
@@ -327,16 +345,65 @@ npm run type-check
 
 # Testing
 
-Automated tests will be added as the project evolves.
+Automated tests are set up using _Vitest + Supertest_, run against a dedicated Neon test branch (never against production or shared dev data).
 
-Future tests should cover:
+## Setup (one-time)
 
-- Authentication
-- Property Management
-- Reviews
-- Payments
-- Verification
-- Location Services
+1. Create a `test` branch on Neon (Neon console → Branches → Create branch).
+2. Copy its connection string into a local `.env.test` (see `.env.test` structure — not committed, same as .env).
+3. Run migrations against it once: `DATABASE_URL="your-test-branch-url" npx drizzle-kit migrate`.
+
+## Running tests
+
+bash
+npm run test # single run
+npm run test:watch # watch mode
+
+Third-party integrations (Dojah, Cloudinary, email sending) are mocked in tests (`src/tests/mocks/integrations.ts`) — no real network calls, no real emails sent, no sandbox API usage during test runs.
+
+## Current coverage (critical paths, not full endpoint coverage — a deliberate scope decision given the sprint timeline)
+
+- _Auth:_ new user creation on first login, wrong-code rejection, unauthenticated route rejection
+- _Property publish gating:_ rejects publishing without at least one photo and one video
+- _Payments:_ Paystack webhook signature verification (valid + invalid + missing signature), isPremium activation/deactivation lifecycle
+- _KYC:_ name-match outcomes (verified / review_needed / rejected), and the blacklist re-registration block
+
+## Not yet covered — future automated tests should extend to
+
+- Properties CRUD beyond publish gating
+- Reviews (GPS-gating logic, cooldown, edit/delete)
+- Amenities, saved properties/filters, inquiries, referrals
+- Admin endpoints (report resolution, blacklist cascade)
+
+CI runs the full suite automatically on every push/PR via a throwaway PostGIS-enabled Postgres service container — see `.github/workflows/ci.yml`.
+
+## Note on seeding production
+
+Two dedicated scripts exist for working with a deployed database directly, both gated behind `SEED_CONFIRM=yes-seed-production so they can't run by accident`:
+
+bash
+
+# Populate a handful of realistic demo listings + reviews
+
+SEED_CONFIRM=yes-seed-production DATABASE_URL="your-production-connection-string" npm run seed-production
+
+# Remove the bare-bones dummy listing from src/db/seed.ts, if it was ever run against this database
+
+SEED_CONFIRM=yes-seed-production DATABASE_URL="your-production-connection-string" npm run cleanup-dev-seed
+
+`npm run seed` itself still refuses to run when `NODE_ENV=production` by design — do not override that guard to seed a deployed database. Use `seed-production` instead, which is meant for exactly this and doesn't touch anything outside its own dedicated demo user's data.
+
+---
+
+# Continuous Integration
+
+GitHub Actions runs automatically on every push and pull request to dev/main:
+
+- _CI_ (`.github/workflows/ci.yml`) — install, lint, type-check, build, and run the automated test suite against a throwaway `postgis/postgis` Postgres service container (spun up fresh per run, not the Neon test branch used locally)
+- _Commit Lint_ (`.github/workflows/commitlint.yml`) — validates every commit in a PR follows Conventional Commits
+- _Build and deploy to Azure_ (`.github/workflows/dev_myulo-api.yml`) — on every push to `dev`, builds and deploys to the `myulo-api` Azure Web App. This workflow only builds/deploys; it does not run tests (that's CI's job — running the integration suite here would need production secrets it doesn't have). A `concurrency` group ensures a new push waits for an in-flight deploy to finish rather than racing it.
+
+A PR with failing lint, type-check, build, tests, or commit-message checks should not be merged.
 
 ---
 

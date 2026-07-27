@@ -87,6 +87,7 @@
     "studio": "drizzle-kit studio",
     "lint": "oxlint",
     "prepare": "husky",
+    "seed-production": "tsx src/db/seed-production.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
