@@ -6,8 +6,9 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["./src/tests/setup.ts"],
     globals: true,
-    fileParallelism: false, // Prevents multiple test files from mutating DB at the same time
+    fileParallelism: false,
     testTimeout: 15000,
+    exclude: ["**/dist/**", "**/node_modules/**"],
   },
   resolve: {
     alias: {
