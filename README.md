@@ -306,7 +306,7 @@ Never commit your `.env` file.
 | npm run format              | Format source files                                                                                                              |
 | npm run generate            | Generate Drizzle migrations                                                                                                      |
 | npm run migrate             | Run database migrations                                                                                                          |
-| npm run seed                | Seed the database with reference/test data (refuses to run if NODE_ENV=production)                                               |
+| npm run seed                | Seed the database with reference/test data (refuses to run if `NODE_ENV=production`)                                             |
 | npm run seed-production     | Seed a small set of richer demo listings/reviews into whatever DATABASE_URL points at; requires SEED_CONFIRM=yes-seed-production |
 | npm run cleanup-dev-seed    | removes the dummy seed.ts test data from whatever DATABASE_URL points at; also requires SEED_CONFIRM=yes-seed-production         |
 | npx tsx scripts/reset-db.ts | Drop all tables/types in dev — clean slate before re-migrating (refuses to run if NODE_ENV=production)                           |
