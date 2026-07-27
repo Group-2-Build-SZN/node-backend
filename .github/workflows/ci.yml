@@ -12,6 +12,7 @@ jobs:
 
     # Global environment variables for ALL steps in this job
     env:
+      DOTENVX_OVERRIDE: "false"
       NODE_ENV: test
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/myulo_test
       JWT_SECRET: test-secret-at-least-32-characters-long
