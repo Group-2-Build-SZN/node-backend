@@ -9,6 +9,20 @@ on:
 jobs:
   lint-and-typecheck:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: myulo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -31,3 +45,37 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Enable PostGIS
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d myulo_test -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+
+      - name: Run migrations
+        run: npx drizzle-kit migrate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/myulo_test
+
+      - name: Run tests
+        run: npm run test
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/myulo_test
+          JWT_SECRET: test-secret
+          JWT_ACCESS_EXPIRY: 15m
+          CLOUDINARY_CLOUD_NAME: test
+          CLOUDINARY_API_KEY: test
+          CLOUDINARY_API_SECRET: test
+          PAYSTACK_SECRET_KEY: sk_test_xxx
+          PAYSTACK_PLAN_CODE: test
+          DOJAH_APP_ID: test
+          DOJAH_SECRET_KEY: test
+          DOJAH_BASE_URL: https://sandbox.dojah.io
+          EMAIL_HOST: smtp.example.com
+          EMAIL_PORT: 587
+          EMAIL_USER: test@example.com
+          EMAIL_PASS: test
+          OTP_EXPIRY_MINUTES: 10
+          OTP_CODE_LENGTH: 6
+          GOOGLE_CLIENT_ID: test
+          ALLOWED_ORIGINS: http://localhost:3000
+          SUPPORT_EMAIL: support@example.com
