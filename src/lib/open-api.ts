@@ -12,6 +12,15 @@ export function generateOpenApiDocument() {
       version: "1.0.0",
       description: "Backend API for My Ulo.",
     },
-    servers: [{ url: "http://localhost:5000/api/v1" }],
+    servers: [
+      {
+        url: "https://myulo-api-fkg9hadcdpc8excc.southafricanorth-01.azurewebsites.net/api/v1",
+        description: "Production",
+      },
+      {
+        url: "http://localhost:5000/api/v1",
+        description: "Local",
+      },
+    ],
   });
 }
