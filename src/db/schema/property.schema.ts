@@ -31,10 +31,21 @@ export const availabilityStatusEnum = pgEnum("availability_status", [
 
 export const listingPurposeEnum = pgEnum("listing_purpose", ["rent", "sale"]);
 
+export const furnishingEnum = pgEnum("furnishing", [
+  "furnished",
+  "semi_furnished",
+  "unfurnished",
+]);
+
+export const tenureEnum = pgEnum("tenure", ["freehold", "leasehold"]);
+
 export const properties = pgTable(
   "properties",
   {
     id: uuid().primaryKey().defaultRandom(),
+    // Human-readable ID shown in the Property Information panel (e.g. "ULO-8K3F2Q"),
+    // distinct from the internal uuid `id`. Generated server-side at creation.
+    propertyRef: text("property_ref").notNull().unique(),
     ownerId: uuid("owner_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -56,6 +67,8 @@ export const properties = pgTable(
     videoUrls: text("video_urls").array(),
     photoUrls: text("photo_urls").array(),
     features: text("features").array(), //e.g.["parking","generator"]
+    furnishing: furnishingEnum("furnishing"),
+    tenure: tenureEnum("tenure"),
     flagCount: integer("flag_count").notNull().default(0),
     availabilityStatus: availabilityStatusEnum("availability_status")
       .notNull()

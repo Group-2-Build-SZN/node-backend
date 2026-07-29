@@ -24,6 +24,8 @@ export const createPropertySchema = z.object({
   longitude: z.coerce.number().min(-180).max(180),
   videoUrls: z.array(z.string().url()).optional(),
   features: z.array(z.string()).optional(),
+  furnishing: z.enum(["furnished", "semi_furnished", "unfurnished"]).optional(),
+  tenure: z.enum(["freehold", "leasehold"]).optional(),
 });
 
 export const updatePropertySchema = createPropertySchema.partial();

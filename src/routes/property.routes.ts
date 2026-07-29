@@ -2,12 +2,15 @@ import PropertyController from "@/controllers/property.controller";
 import SavedPropertyController from "@/controllers/saved-property.controller";
 import PropertyReportController from "@/controllers/property-report.controller";
 import InquiryController from "@/controllers/inquiry.controller";
+import InspectionController from "@/controllers/inspection.controller";
 import {
   propertyMediaUpload,
   reportEvidenceUpload,
 } from "@/middlewares/upload.middleware";
+import { validateVideoDuration } from "@/middlewares/video-validation.middleware";
 import { validateSchema } from "@/middlewares/validation.middleware";
 import { submitInquirySchema } from "@/validations/inquiry.validation";
+import { scheduleInspectionSchema } from "@/validations/inspection.validation";
 import { submitReportSchema } from "@/validations/property-report.validation";
 import {
   authenticate,
@@ -41,6 +44,13 @@ router.post(
   authenticate,
   validateSchema(submitInquirySchema, "body"),
   InquiryController.submitInquiry,
+);
+
+router.post(
+  "/:id/inspections",
+  authenticate,
+  validateSchema(scheduleInspectionSchema, "body"),
+  InspectionController.scheduleInspection,
 );
 
 router.delete(
@@ -85,6 +95,7 @@ router.post(
   authenticate,
   authorize(UserRole.AGENT, UserRole.LANDLORD),
   propertyMediaUpload,
+  validateVideoDuration,
   PropertyController.addMedia,
 );
 

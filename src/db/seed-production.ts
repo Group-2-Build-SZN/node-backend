@@ -4,6 +4,14 @@ import { properties } from "@/db/schema/property.schema";
 import { reviews } from "@/db/schema/reviews.schema";
 import { eq } from "drizzle-orm";
 
+function propertyRef() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let ref = "";
+  for (let i = 0; i < 8; i++)
+    ref += chars[Math.floor(Math.random() * chars.length)];
+  return `ULO-${ref}`;
+}
+
 // Fixed, dedicated ids so this script is safe to re-run without piling up
 // duplicate rows, and so it never touches real user data.
 const DEMO_AGENT_ID = "22222222-2222-2222-2222-222222222222";
@@ -13,6 +21,14 @@ const PLACEHOLDER_PHOTOS = [
   "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2",
   "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688",
   "https://images.unsplash.com/photo-1512917774080-9991f1c4c750",
+];
+
+// Freely-licensed sample MP4s (Google's public GTV test bucket) used only as
+// stand-in "video walkthrough" content for demo/staging listings — swap for
+// real Cloudinary-hosted walkthroughs before this is ever shown to real users.
+const PLACEHOLDER_VIDEOS = [
+  "https://www.pexels.com/download/video/36534813/",
+  "https://www.pexels.com/download/video/20538711/",
 ];
 
 type DemoProperty = {
@@ -226,11 +242,12 @@ async function seedProduction() {
       set: { firstName: "Demo", lastName: "Reviewer" },
     });
 
-  for (const demoProperty of DEMO_PROPERTIES) {
+  for (const [index, demoProperty] of DEMO_PROPERTIES.entries()) {
     const [property] = await db
       .insert(properties)
       .values({
         ownerId: DEMO_AGENT_ID,
+        propertyRef: propertyRef(),
         listingTitle: demoProperty.listingTitle,
         description: demoProperty.description,
         propertyType: demoProperty.propertyType,
@@ -241,6 +258,7 @@ async function seedProduction() {
         address: demoProperty.address,
         location: demoProperty.location,
         photoUrls: PLACEHOLDER_PHOTOS,
+        videoUrls: [PLACEHOLDER_VIDEOS[index % PLACEHOLDER_VIDEOS.length]],
         features: demoProperty.features,
         availabilityStatus: "available",
         isPublished: true,

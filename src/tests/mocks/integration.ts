@@ -4,6 +4,7 @@ vi.mock("@/services/email.service", () => ({
   default: {
     sendLoginCode: vi.fn().mockResolvedValue(undefined),
     sendContactNotification: vi.fn().mockResolvedValue(undefined),
+    sendEmailChangeCode: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -24,4 +25,8 @@ vi.mock("@/lib/cloudinary", () => ({
       .fn()
       .mockResolvedValue("https://fake-cloudinary-url.com/image.jpg"),
   },
+}));
+
+vi.mock("get-video-duration", () => ({
+  getVideoDurationInSeconds: vi.fn().mockResolvedValue(30),
 }));

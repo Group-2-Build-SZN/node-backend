@@ -105,7 +105,7 @@ registry.registerPath({
                 ownerId: "7be4fa93-8d56-4bc2-88c5-e95346830679",
                 listingTitle: "God's power lodge",
                 listingPurpose: "rent",
-                description: "a self con wth kitchen and toilet",
+                description: "a self con with kitchen and toilet",
                 propertyType: "self_contained",
                 bedrooms: 0,
                 bathrooms: 1,
@@ -122,7 +122,7 @@ registry.registerPath({
                 photoUrls: [
                   "https://res.cloudinary.com/l7bjl5ep/image/upload/v1784998701/ulo/properties/photos/myhrl0qycvox09ltzxp0.jpg",
                 ],
-                features: ["string", "string"],
+                features: ["parking", "security"],
                 flagCount: 0,
                 availabilityStatus: "available",
                 isPublished: true,

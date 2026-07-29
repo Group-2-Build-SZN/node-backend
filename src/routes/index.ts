@@ -12,6 +12,8 @@ import savedFilterRoutes from "@/routes/saved-filter.routes";
 import userRoutes from "@/routes/user.routes";
 import adminRoutes from "@/routes/admin.routes";
 import contactRoutes from "@/routes/contact.routes";
+import inspectionRoutes from "@/routes/inspection.routes";
+import conversationRoutes from "@/routes/conversation.routes";
 
 const router = Router();
 
@@ -20,6 +22,8 @@ router.use("/auth", authRoutes);
 router.use("/kyc", kycRoutes);
 router.use("/saved", savedPropertyRoutes);
 router.use("/inquiries", inquiryRoutes);
+router.use("/inspections", inspectionRoutes);
+router.use("/conversations", conversationRoutes);
 router.use("/properties/:propertyId/reviews", reviewRoutes);
 router.use("/properties", propertyRoutes);
 router.use("/amenities", amenityRoutes);

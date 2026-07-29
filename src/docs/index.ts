@@ -12,3 +12,5 @@ import "@/docs/user.doc";
 import "@/docs/admin.doc";
 import "@/docs/property-report.doc";
 import "@/docs/contact.doc";
+import "@/docs/inspection.doc";
+import "@/docs/conversation.doc";

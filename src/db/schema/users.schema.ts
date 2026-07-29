@@ -4,6 +4,7 @@ import {
   text,
   timestamp,
   boolean,
+  date,
   pgEnum,
 } from "drizzle-orm/pg-core";
 
@@ -12,6 +13,12 @@ export const userRoleEnum = pgEnum("user_role", [
   "agent",
   "landlord",
   "admin",
+]);
+
+export const genderEnum = pgEnum("gender", [
+  "male",
+  "female",
+  "prefer_not_to_say",
 ]);
 
 export const verificationTypeEnum = pgEnum("verification_type", ["nin", "cac"]);
@@ -39,6 +46,18 @@ export const users = pgTable("users", {
   isPremium: boolean("is_premium").notNull().default(false),
   premiumUntil: timestamp("premium_until"),
   isBlacklisted: boolean("is_blacklisted").notNull().default(false),
+
+  // Extra profile fields (Settings > Profile)
+  dateOfBirth: date("date_of_birth"),
+  gender: genderEnum("gender"),
+  city: text("city"),
+  country: text("country"),
+
+  // Account preferences (Settings > Account)
+  language: text("language").notNull().default("en"),
+  timezone: text("timezone").notNull().default("Africa/Lagos"),
+  dateFormat: text("date_format").notNull().default("DD/MM/YYYY"),
+
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

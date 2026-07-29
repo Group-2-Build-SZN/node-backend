@@ -46,7 +46,7 @@ registry.registerPath({
               propertyId: "597d6e53-aecc-4471-89db-31db04dd5f56",
               reporterId: "5311b044-ebda-4fb9-9f6d-470be0bb37fd",
               reason: "other",
-              description: "string",
+              description: "fake listing",
               evidenceUrls: [
                 "https://res.cloudinary.com/l7bjl5ep/image/upload/v1785020731/ulo/reports/evidence/ff5ebfoopvyfxmqheoty.jpg",
               ],
@@ -206,7 +206,7 @@ registry.registerPath({
             photoUrls: [
               "https://res.cloudinary.com/l7bjl5ep/image/upload/v1784998701/ulo/properties/photos/myhrl0qycvox09ltzxp0.jpg",
             ],
-            features: ["string", "string"],
+            features: ["parking", "security"],
             flagCount: 1,
             availabilityStatus: "available",
             isPublished: true,

@@ -15,6 +15,19 @@ import cloudinaryClient from "@/lib/cloudinary";
 import { property } from "zod";
 import { propertyViews } from "@/db/schema/property-views.schema";
 
+// Human-readable ID for the Property Information panel, e.g. "ULO-8K3F2QZR".
+// Not cryptographically unique on its own — the DB column has a unique constraint,
+// so a collision (astronomically unlikely at this length) would surface as a
+// clean insert error rather than silently overwriting another listing.
+function generatePropertyRef() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I ambiguity
+  let ref = "";
+  for (let i = 0; i < 8; i++) {
+    ref += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return `ULO-${ref}`;
+}
+
 class PropertyService {
   async createProperty(ownerId: string, payload: CreatePropertyInput) {
     const { latitude, longitude, price, ...rest } = payload;
@@ -26,6 +39,7 @@ class PropertyService {
         ownerId,
         price: price.toString(),
         location: { x: longitude, y: latitude },
+        propertyRef: generatePropertyRef(),
       })
       .returning();
 

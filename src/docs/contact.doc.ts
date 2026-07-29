@@ -22,7 +22,7 @@ registry.registerPath({
             fullName: "Chinedu Okafor",
             email: "anakorafav@gmail.com",
             subject: "Question",
-            message: "string",
+            message: "I have an issue with the app.",
           },
         },
       },
