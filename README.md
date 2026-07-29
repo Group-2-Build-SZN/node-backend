@@ -49,6 +49,7 @@ Before you begin, ensure you have the following installed:
 - **Identity Verification** — Dojah (synchronous NIN/CAC lookup)
 - **Payments** — Paystack (recurring monthly subscription)
 - **Logging** — Pino + pino-http
+- **Realtime** — Socket.IO (JWT-authenticated, used for Live Chat)
 - **Security** — Helmet, CORS, Cookie Parser, Rate Limiter
 - **API Documentation** — Swagger (OpenAPI), deployed alongside the API on Azure for frontend consumption
 - **Git Hooks** — Husky + Commitlint
@@ -72,9 +73,16 @@ _Properties_
 - PATCH /properties/:id
 - PATCH /properties/:id/publish — requires owner KYC verified
 - DELETE /properties/:id
-- POST /properties/:id/media — photo/video upload via Cloudinary
+- POST /properties/:id/media — photo/video upload via Cloudinary; videos are probed with ffprobe and rejected if under 5s, over 5min, or unreadable/corrupted (Multer's 20MB size check alone doesn't catch this)
 - POST /properties/:id/report — reason, description, evidence upload
 - POST /properties/:id/save, DELETE /properties/:id/save
+- POST /properties/:id/inspections — schedule a viewing (tenant-facing; date/time based, distinct from Inquiries)
+
+_Inspections_
+
+- GET /inspections/me — tenant's own scheduled inspections
+- GET /inspections/agent/me — inspections booked against the agent/landlord's listings
+- PATCH /inspections/:id/status — agent can confirm/complete/cancel; tenant can only cancel their own
 
 _Saved_
 
@@ -124,9 +132,24 @@ _Users_
 
 - GET /users/me
 - GET /users/me/stats — saved/viewed/inquiries counts for the Profile screen's Account Overview
+- GET /users/me/activity — unified "Viewed / Saved / Reviewed" feed for the dashboard (chronological merge of existing view/save/review events, not a separate table)
 - PATCH /users/me/avatar
+- PATCH /users/me/profile — Settings > Profile (dateOfBirth, gender, city, country)
+- PATCH /users/me/account — Settings > Account (language, timezone, dateFormat)
+- GET /users/me/notification-preferences, PATCH /users/me/notification-preferences — Settings > Notifications, per-category email/push toggles
+- POST /users/me/email/request-change, POST /users/me/email/verify-change — Settings > Security, two-step OTP email change
+- POST /users/me/recent-searches, GET /users/me/recent-searches, DELETE /users/me/recent-searches — dashboard "Recent Searches" stat
 - DELETE /users/me
 - GET /users/:id/profile — public agent/landlord profile
+
+_Conversations (Live Chat)_
+
+- POST /conversations — start (or reuse) a thread with another user, with an initial message
+- GET /conversations — list threads with last message + unread count
+- GET /conversations/unread-count — dashboard "Messages: N" stat
+- GET /conversations/:id/messages, POST /conversations/:id/messages
+- PATCH /conversations/:id/read
+- Realtime: connect a Socket.IO client with `auth: { token: <accessToken> }`; listens for `message:new`, `message:read`, `conversation:typing` events on the caller's own room
 
 _Contact_
 
@@ -367,6 +390,12 @@ Third-party integrations (Dojah, Cloudinary, email sending) are mocked in tests 
 - _Property publish gating:_ rejects publishing without at least one photo and one video
 - _Payments:_ Paystack webhook signature verification (valid + invalid + missing signature), isPremium activation/deactivation lifecycle
 - _KYC:_ name-match outcomes (verified / review_needed / rejected), and the blacklist re-registration block
+- _User settings:_ profile/account/notification preference updates, full email-change OTP flow (including wrong-code and already-taken-email rejection)
+- _Recent searches:_ record/list/clear
+- _Inspections:_ scheduling, past-date rejection, agent-vs-tenant status permissions
+- _Activity feed:_ merges viewed/saved/reviewed events correctly
+- _Messaging:_ conversation start/reuse, unread counts, read receipts, non-participant rejection
+- _Video duration validation:_ rejects too-short and corrupted uploads, accepts valid ones
 
 ## Not yet covered — future automated tests should extend to
 
