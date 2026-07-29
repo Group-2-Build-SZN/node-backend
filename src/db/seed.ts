@@ -7,6 +7,14 @@ import { eq } from "drizzle-orm";
 import { TEST_USER_ID } from "@/constants/seed-dev";
 import { env } from "@/config/env.config";
 
+function propertyRef() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let ref = "";
+  for (let i = 0; i < 8; i++)
+    ref += chars[Math.floor(Math.random() * chars.length)];
+  return `ULO-${ref}`;
+}
+
 async function seed() {
   if (env.NODE_ENV === "production") {
     console.error("Refusig to run script in production");
@@ -74,6 +82,7 @@ async function seed() {
     .insert(properties)
     .values({
       ownerId: TEST_USER_ID,
+      propertyRef: propertyRef(),
       listingTitle: "2 Bedroom Apartment, New Haven",
       description:
         "Spacious and fully serviced 2 bedroom apartment in a secure estate.",
