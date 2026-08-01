@@ -164,6 +164,23 @@ registry.registerPath({
         },
       },
     },
+    404: { description: "User not found" },
+    409: {
+      description: "Phone number is already registered to another account",
+      content: {
+        "application/json": {
+          schema: { type: "object" },
+          example: {
+            success: false,
+            error: {
+              message:
+                "This phone number is already registered to another account",
+              code: "DUPLICATE_ENTRY",
+            },
+          },
+        },
+      },
+    },
   },
 });
 

@@ -28,6 +28,10 @@ import type {
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
 const REFRESH_TOKEN_DAYS = 30;
 
+interface DbErrorWithCause {
+  cause?: { code?: string };
+}
+
 interface RequestMeta {
   userAgent?: string;
   ip?: string;
@@ -166,17 +170,31 @@ class AuthService {
   }
 
   async completeProfile(userId: string, payload: CompleteProfileInput) {
-    const [user] = await db
-      .update(users)
-      .set({
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        phone: payload.phone,
-        role: payload.role,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, userId))
-      .returning();
+    let user;
+
+    try {
+      [user] = await db
+        .update(users)
+        .set({
+          firstName: payload.firstName,
+          lastName: payload.lastName,
+          phone: payload.phone,
+          role: payload.role,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId))
+        .returning();
+    } catch (err) {
+      const cause = (err as DbErrorWithCause).cause?.code;
+      if (cause === "23505") {
+        throw AppError(
+          "This phone number is already registered to another account",
+          StatusCodes.CONFLICT,
+          ErrorCode.DUPLICATE_ENTRY,
+        );
+      }
+      throw err;
+    }
 
     if (!user) {
       throw AppError(
