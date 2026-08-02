@@ -6,6 +6,8 @@ import {
   sendMessageSchema,
   getMessagesQuerySchema,
 } from "@/validations/message.validation";
+import { getConversationsQuerySchema } from "@/validations/message.validation";
+
 import { Router } from "express";
 
 const router = Router();
@@ -17,7 +19,12 @@ router.post(
   ConversationController.startConversation,
 );
 
-router.get("/", authenticate, ConversationController.getConversations);
+router.get(
+  "/",
+  authenticate,
+  validateSchema(getConversationsQuerySchema, "query"),
+  ConversationController.getConversations,
+);
 
 router.get(
   "/unread-count",

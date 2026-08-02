@@ -4,6 +4,7 @@ import {
   sendMessageSchema,
   getMessagesQuerySchema,
 } from "@/validations/message.validation";
+import { getConversationsQuerySchema } from "@/validations/message.validation";
 import { z } from "@/lib/zod";
 
 const jsonContent = (example: unknown) => ({
@@ -21,6 +22,68 @@ const exampleMessage = {
   readAt: null,
   createdAt: "2026-07-25T23:55:10.389Z",
 };
+
+registry.registerPath({
+  method: "get",
+  path: "/conversations",
+  summary:
+    "Get conversations list — paginated, optionally filtered by property",
+  tags: ["Conversations"],
+  security: [{ bearerAuth: [] }],
+  request: { query: getConversationsQuerySchema },
+  responses: {
+    200: {
+      description: "Conversations retrieved successfully",
+      content: {
+        "application/json": jsonContent({
+          success: true,
+          data: [
+            {
+              id: "a1b2c3d4-e5f6-47a8-b9c0-d1e2f3a4b5c6",
+              property: {
+                id: "597d6e53-aecc-4471-89db-31db04dd5f56",
+                listingTitle: "2 bedroom flat in nsukka",
+                photoUrls: [
+                  "https://res.cloudinary.com/l7bjl5ep/image/upload/...",
+                ],
+                price: "2500000.00",
+              },
+              otherUser: {
+                id: "5311b044-ebda-4fb9-9f6d-470be0bb37fd",
+                firstName: "Chioma",
+                lastName: "Okafor",
+                avatarUrl:
+                  "https://res.cloudinary.com/l7bjl5ep/image/upload/...",
+              },
+              lastMessage: {
+                id: "msg-001",
+                content: "Is this still available?",
+                status: "read",
+                createdAt: "2026-08-02T14:30:45.123Z",
+              },
+              unreadCount: 0,
+              lastMessageAt: "2026-08-02T14:30:45.123Z",
+            },
+          ],
+          pagination: { page: 1, limit: 20, total: 47 },
+        }),
+      },
+    },
+    400: {
+      description: "Invalid query parameters",
+      content: {
+        "application/json": jsonContent({
+          success: false,
+          error: {
+            message: "Invalid query parameters",
+            code: "INVALID_INPUT",
+          },
+        }),
+      },
+    },
+    401: { description: "Not authenticated" },
+  },
+});
 
 registry.registerPath({
   method: "post",

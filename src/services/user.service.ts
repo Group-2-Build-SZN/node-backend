@@ -88,17 +88,9 @@ class UserService {
   async updateProfile(userId: string, payload: UpdateProfileInput) {
     const [user] = await db
       .update(users)
-      .set({ ...payload, updatedAt: new Date() })
+      .set(payload) // This spreads all properties, including phone
       .where(eq(users.id, userId))
       .returning();
-
-    if (!user) {
-      throw AppError(
-        "User not found",
-        StatusCodes.NOT_FOUND,
-        ErrorCode.RESOURCE_NOT_FOUND,
-      );
-    }
     return user;
   }
 

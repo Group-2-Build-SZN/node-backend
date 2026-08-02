@@ -1,4 +1,5 @@
 import conversationService from "@/services/conversation.service";
+import type { GetConversationsQuery } from "@/validations/message.validation";
 import messageService from "@/services/message.service";
 import type { GetMessagesQuery } from "@/validations/message.validation";
 import { Request, Response } from "express";
@@ -13,8 +14,14 @@ class ConversationController {
 
   static async getConversations(req: Request, res: Response) {
     const userId = req.user!.id;
-    const data = await conversationService.getConversations(userId);
-    return res.status(StatusCodes.OK).json({ success: true, data });
+    const { page, limit, propertyId } =
+      req.validatedQuery as GetConversationsQuery;
+    const result = await conversationService.getConversations(userId, {
+      page,
+      limit,
+      propertyId,
+    });
+    return res.status(StatusCodes.OK).json({ success: true, ...result });
   }
 
   static async getUnreadCount(req: Request, res: Response) {

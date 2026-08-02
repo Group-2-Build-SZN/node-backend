@@ -1,9 +1,16 @@
 import { z } from "@/lib/zod";
 
-// Settings > Profile
 export const updateProfileSchema = z.object({
   firstName: z.string().trim().min(1).max(100).optional(),
   lastName: z.string().trim().min(1).max(100).optional(),
+  phone: z
+    .string()
+    .trim()
+    .regex(
+      /^\+?[1-9]\d{1,14}$/,
+      "phone must be a valid E.164 format (e.g., +234801234567)",
+    )
+    .optional(),
   dateOfBirth: z
     .string()
     .trim()

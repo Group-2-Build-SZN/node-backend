@@ -9,6 +9,51 @@ const jsonContent = (example: unknown) => ({
 });
 
 registry.registerPath({
+  method: "get",
+  path: "/inquiries",
+  summary: "Get current user's inquiries — filtered by status and/or property",
+  tags: ["Inquiries"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    query: z.object({
+      page: z.coerce.number().int().min(1).optional().default(1),
+      limit: z.coerce.number().int().min(1).max(50).optional().default(20),
+      status: z.enum(["pending", "responded", "closed"]).optional(),
+      propertyId: z.string().uuid().optional(),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Inquiries retrieved successfully",
+      content: {
+        "application/json": jsonContent({
+          success: true,
+          data: [
+            {
+              inquiry: {
+                id: "752cf85c-ce45-405c-a0e0-928aba9c079e",
+                propertyId: "597d6e53-aecc-4471-89db-31db04dd5f56",
+                tenantId: "5311b044-ebda-4fb9-9f6d-470be0bb37fd",
+                message: "is this still available?",
+                status: "responded",
+                createdAt: "2026-08-02T10:30:45.123Z",
+              },
+              property: {
+                id: "597d6e53-aecc-4471-89db-31db04dd5f56",
+                listingTitle: "Luxury 3-Bedroom Apartment",
+                price: "2500000.00",
+              },
+            },
+          ],
+          pagination: { page: 1, limit: 20, total: 12 },
+        }),
+      },
+    },
+    401: { description: "Not authenticated" },
+  },
+});
+
+registry.registerPath({
   method: "post",
   path: "/properties/{id}/inquiries",
   summary: "Submit an inquiry about a property",

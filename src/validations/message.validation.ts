@@ -15,6 +15,13 @@ export const getMessagesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(30),
 });
 
+export const getConversationsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(50).optional().default(20),
+  propertyId: z.string().uuid().optional(),
+});
+
+export type GetConversationsQuery = z.infer<typeof getConversationsQuerySchema>;
 export type StartConversationInput = z.infer<typeof startConversationSchema>;
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 export type GetMessagesQuery = z.infer<typeof getMessagesQuerySchema>;

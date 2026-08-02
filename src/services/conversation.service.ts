@@ -73,7 +73,37 @@ class ConversationService {
     return { conversation, message };
   }
 
-  async getConversations(userId: string) {
+  async getConversations(
+    userId: string,
+    filters?: {
+      page?: number;
+      limit?: number;
+      propertyId?: string;
+    },
+  ) {
+    const page = filters?.page ?? 1;
+    const limit = filters?.limit ?? 20;
+    const offset = (page - 1) * limit;
+
+    // Build WHERE clause
+    const whereConditions = [
+      or(
+        eq(conversations.participantOneId, userId),
+        eq(conversations.participantTwoId, userId),
+      ),
+    ];
+
+    if (filters?.propertyId) {
+      whereConditions.push(eq(conversations.propertyId, filters.propertyId));
+    }
+
+    // Get total count
+    const [countResult] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(conversations)
+      .where(and(...whereConditions));
+
+    // Get paginated results
     const rows = await db
       .select({
         conversation: conversations,
@@ -81,13 +111,10 @@ class ConversationService {
       })
       .from(conversations)
       .leftJoin(properties, eq(properties.id, conversations.propertyId))
-      .where(
-        or(
-          eq(conversations.participantOneId, userId),
-          eq(conversations.participantTwoId, userId),
-        ),
-      )
-      .orderBy(desc(conversations.lastMessageAt));
+      .where(and(...whereConditions))
+      .orderBy(desc(conversations.lastMessageAt))
+      .limit(limit)
+      .offset(offset);
 
     const results = [];
     for (const row of rows) {
@@ -133,7 +160,10 @@ class ConversationService {
       });
     }
 
-    return results;
+    return {
+      data: results,
+      pagination: { page, limit, total: countResult?.total ?? 0 },
+    };
   }
 
   // "Messages: 3" dashboard stat
