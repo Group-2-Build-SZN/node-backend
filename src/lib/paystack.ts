@@ -8,7 +8,7 @@ class PaystackClient {
     "Content-Type": "application/json",
   };
 
-  async initializeSubscriptionTransaction(email: string, callbackUrl?: string) {
+  async initializeSubscriptionTransaction(email: string) {
     const response = await fetch(
       `${PAYSTACK_BASE_URL}/transaction/initialize`,
       {
@@ -18,7 +18,7 @@ class PaystackClient {
           email,
           amount: 750000, //7500 naira in kobo
           plan: env.PAYSTACK_PLAN_CODE,
-          callback_url: callbackUrl,
+          callback_url: `${env.FRONTEND_URL}/subscription/success`,
         }),
       },
     );
