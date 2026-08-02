@@ -14,6 +14,7 @@ export * from "@/db/schema/saved-filters.schema";
 export * from "@/db/schema/contact-messages.schema";
 export * from "@/db/schema/notification-preferences.schema";
 export * from "@/db/schema/recent-searches.schema";
+export * from "@/db/schema/search-logs.schema";
 export * from "@/db/schema/inspections.schema";
 export * from "@/db/schema/messaging.schema";
 export * from "@/db/schema/email-change.schema";

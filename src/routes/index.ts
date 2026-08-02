@@ -14,6 +14,7 @@ import adminRoutes from "@/routes/admin.routes";
 import contactRoutes from "@/routes/contact.routes";
 import inspectionRoutes from "@/routes/inspection.routes";
 import conversationRoutes from "@/routes/conversation.routes";
+import landlordStatsRoutes from "@/routes/landlord-stats.routes";
 
 const router = Router();
 
@@ -31,6 +32,7 @@ router.use("/payments", paymentRoutes);
 router.use("/referrals", referralRoutes);
 router.use("/saved-filters", savedFilterRoutes);
 router.use("/users", userRoutes);
+router.use("/landlord", landlordStatsRoutes);
 router.use("/contact", contactRoutes);
 
 export default router;

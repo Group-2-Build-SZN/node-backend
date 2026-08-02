@@ -3,6 +3,7 @@ import { db } from "@/config/database.config";
 import { properties } from "@/db/schema/property.schema";
 import { savedProperties } from "@/db/schema/saved-properties.schema";
 import { users, verifications } from "@/db/schema/users.schema";
+import { searchLogs, searchLogMatches } from "@/db/schema/search-logs.schema";
 import AppError from "@/errors/AppError";
 import { ErrorCode } from "@/constants/error-code";
 import { StatusCodes } from "http-status-codes";
@@ -12,13 +13,9 @@ import type {
   GetPropertiesQuery,
 } from "@/validations/property.validation";
 import cloudinaryClient from "@/lib/cloudinary";
-import { property } from "zod";
 import { propertyViews } from "@/db/schema/property-views.schema";
 
 // Human-readable ID for the Property Information panel, e.g. "ULO-8K3F2QZR".
-// Not cryptographically unique on its own — the DB column has a unique constraint,
-// so a collision (astronomically unlikely at this length) would surface as a
-// clean insert error rather than silently overwriting another listing.
 function generatePropertyRef() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I ambiguity
   let ref = "";
@@ -46,7 +43,7 @@ class PropertyService {
     return property;
   }
 
-  // property listing screen : search, filters, map/list tohggle, verified-only, card-level trust preview
+  // property listing screen : search, filters, map/list toggle, verified-only, card-level trust preview
   async getProperties(query: GetPropertiesQuery, requestingUserId?: string) {
     const {
       page,
@@ -129,11 +126,57 @@ class PropertyService {
     LIMIT ${limit} OFFSET ${offset}
   `);
 
+    // ==================== ADDED CODE HERE ====================
+    // Log the search + which properties matched, so owners can later see
+    // how often their listings surface in search. Only logged for real
+    // text searches (not plain filter/browse calls), and never allowed
+    // to block or fail the actual search response.
+    if (search && search.trim().length > 0) {
+      void this.logSearch(
+        search,
+        requestingUserId,
+        rows.rows as { id: string }[],
+      );
+    }
+    // =========================================================
+
     return {
       data: rows.rows,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
+
+  // ==================== ADDED PRIVATE METHOD HERE ====================
+  private async logSearch(
+    searchTerm: string,
+    userId: string | undefined,
+    matchedProperties: { id: string }[],
+  ) {
+    try {
+      const [log] = await db
+        .insert(searchLogs)
+        .values({
+          searchTerm,
+          userId: userId ?? null,
+          resultCount: matchedProperties.length,
+        })
+        .returning();
+
+      if (matchedProperties.length > 0) {
+        await db.insert(searchLogMatches).values(
+          matchedProperties.map((p) => ({
+            searchLogId: log.id,
+            propertyId: p.id,
+          })),
+        );
+      }
+    } catch (err) {
+      // Search logging is best-effort analytics — never let it surface
+      // as an error to the user or block their actual search results.
+      console.error("Failed to log search:", err);
+    }
+  }
+  // ====================================================================
 
   async getPropertyById(id: string, requestingUserId?: string) {
     const [property] = await db
@@ -149,7 +192,6 @@ class PropertyService {
       );
     }
 
-    // Track or update the user's property view history here
     if (requestingUserId) {
       await db
         .insert(propertyViews)
@@ -238,7 +280,6 @@ class PropertyService {
     };
   }
 
-  // trust score + per category bars shown on property details / video walkthrough screens
   async getTrustSummary(propertyId: string) {
     const result = await db.execute(sql`
       SELECT COUNT (*) AS review_count, COALESCE (ROUND(AVG(water_rating), 1), 0) AS water_rating, COALESCE (ROUND(AVG(electricity_rating), 1), 0) AS electricity_rating, COALESCE(ROUND(AVG(security_rating), 1), 0) AS security_rating, COALESCE(ROUND(AVG(road_accessibility_rating), 1), 0) AS road_accessiblity_rating, COALESCE (ROUND(AVG(cleanliness_rating), 1), 0) AS cleanliness_rating, COALESCE (ROUND(AVG((water_rating + electricity_rating + security_rating + road_accessibility_rating + cleanliness_rating) / 5.0) /5 * 100), 0) AS trust_score
@@ -248,7 +289,6 @@ class PropertyService {
     return result.rows[0];
   }
 
-  // "Trek Check" - nearest amenity of each type
   async getTrekCheck(propertyId: string) {
     const result = await db.execute(sql`
             SELECT DISTINCT ON (a.type) a.type, a.name, ROUND(ST_Distance(a.location::geography, p.location::geography)) AS distance_metres

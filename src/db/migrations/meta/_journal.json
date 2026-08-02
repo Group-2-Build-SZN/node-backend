@@ -120,6 +120,13 @@
       "when": 1785291844364,
       "tag": "0016_loud_natasha_romanoff",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1785648716494,
+      "tag": "0017_add_search_logs",
+      "breakpoints": true
     }
   ]
 }
