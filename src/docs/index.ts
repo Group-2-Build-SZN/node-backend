@@ -14,3 +14,5 @@ import "@/docs/property-report.doc";
 import "@/docs/contact.doc";
 import "@/docs/inspection.doc";
 import "@/docs/conversation.doc";
+import "@/docs/recent-search.docs";
+import "@/docs/landlord-stats.doc";
